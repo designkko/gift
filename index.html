@@ -1124,8 +1124,7 @@
         if (currentPrize.remaining > 0) {
           countInput.max = currentPrize.remaining;
           countInput.min = 1;
-          const curVal = Number(countInput.value) || 1;
-          countInput.value = Math.min(currentPrize.remaining, Math.max(1, curVal));
+          countInput.value = currentPrize.remaining;
           countInput.disabled = false;
         } else {
           countInput.max = 0;
