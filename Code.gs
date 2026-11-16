@@ -35,7 +35,7 @@ function doGet(e) {
     return handleApiGet_(action, e.parameter);
   }
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('🎉 구글시트 연동 추첨 프로그램')
+    .setTitle('🎄 2026 내일교회 성탄 선물 추첨')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
