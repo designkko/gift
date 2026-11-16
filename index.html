@@ -831,7 +831,7 @@
 
   <script>
     const IS_GAS_HOSTED = typeof google !== 'undefined' && google.script && google.script.run;
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbybShq_Knui_nCFfAH79BuNDH3y9qKiNsy0pqRKGp94bKvaGLIBGbh8MTC1H8WrWEm3/exec';
+    const DEFAULT_GAS_URL = '';
     const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
     const STORAGE_KEY_DEMO = 'raffle_demo_state_v1';
 
@@ -1724,7 +1724,9 @@
       document.getElementById('config-modal').classList.add('open');
     }
     async function copyRegisterLink() {
-      const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
+      const gasUrl = getGasUrl().trim();
+      let base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
+      if (gasUrl) base += `?api=${encodeURIComponent(gasUrl)}`;
       try {
         await navigator.clipboard.writeText(base);
         showToast('🔗 참여자 등록 페이지 링크가 복사되었습니다!');
