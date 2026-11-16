@@ -700,8 +700,17 @@
       return localStorage.getItem(STORAGE_KEY_URL) || '';
     }
 
-    function updateConnectionBadge() {
+    function updateConnectionBadge(hasError = false) {
       const badge = document.getElementById('conn-badge');
+      if (hasError) {
+        badge.textContent = '🔴 구글시트 연결 오류';
+        badge.className = 'badge';
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+        badge.style.color = '#fca5a5';
+        return;
+      }
+      badge.style.borderColor = '';
+      badge.style.color = '';
       if (IS_GAS_HOSTED) {
         badge.textContent = '🟢 구글시트 직접 연동됨';
         badge.className = 'badge live';
@@ -908,6 +917,7 @@
         applyState(res);
         return true;
       } catch (err) {
+        updateConnectionBadge(true);
         showToast('❌ 데이터 불러오기 실패: ' + err.message);
         return false;
       }
