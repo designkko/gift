@@ -141,15 +141,15 @@ function setupSheets(silent) {
     prSheet = ss.insertSheet(SHEET_NAMES.PRIZES);
   }
   if (prSheet.getLastRow() === 0) {
-    const prHeaders = [['상품명', '총수량', '당첨수량', '남은수량', '비고', '추첨인원']];
+    const prHeaders = [['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '순서']];
     prSheet.getRange(1, 1, 1, 6).setValues(prHeaders);
     styleHeader_(prSheet, 6, '#059669');
     prSheet.setColumnWidth(1, 200);
     prSheet.setColumnWidth(2, 90);
     prSheet.setColumnWidth(3, 90);
     prSheet.setColumnWidth(4, 90);
-    prSheet.setColumnWidth(5, 180);
-    prSheet.setColumnWidth(6, 90);
+    prSheet.setColumnWidth(5, 90);
+    prSheet.setColumnWidth(6, 120);
     prSheet.setFrozenRows(1);
   }
 
@@ -210,11 +210,11 @@ function insertSampleData() {
 
   if (prSheet.getLastRow() <= 1) {
     const samplePrizes = [
-      ['1등: 에어팟 프로', 1, 0, '=B2-C2', '최고 인기 상품'],
-      ['2등: 백화점 상품권 5만원', 2, 0, '=B3-C3', ''],
-      ['3등: 스타벅스 아메리카노', 3, 0, '=B4-C4', '']
+      ['1등: 에어팟 프로', 1, 1, 0, '=B2-D2', 1],
+      ['2등: 백화점 상품권 5만원', 2, 2, 0, '=B3-D3', 2],
+      ['3등: 스타벅스 아메리카노', 3, 3, 0, '=B4-D4', 3]
     ];
-    prSheet.getRange(2, 1, samplePrizes.length, 5).setValues(samplePrizes);
+    prSheet.getRange(2, 1, samplePrizes.length, 6).setValues(samplePrizes);
   }
 
   SpreadsheetApp.getUi().alert('✅ 샘플 데이터가 추가되었습니다.');
@@ -266,18 +266,18 @@ function getAllData() {
       const name = String(row[0] || '').trim();
       if (!name) return;
       const total = Math.max(0, Number(row[1]) || 0);
-      const drawn = Math.max(0, Number(row[2]) || 0);
+      const rawDrawCount = Number(row[2]);
+      const drawn = Math.max(0, Number(row[3]) || 0);
       const remaining = Math.max(0, total - drawn);
-      const rawDrawCount = Number(row[5]);
       const drawCount = rawDrawCount > 0 ? rawDrawCount : (remaining > 0 ? remaining : 1);
       prizes.push({
         rowIndex: idx + 2,
         name: name,
         total: total,
+        drawCount: drawCount,
         drawn: drawn,
         remaining: remaining,
-        note: String(row[4] || '').trim(),
-        drawCount: drawCount
+        note: String(row[5] || '').trim()
       });
     });
   }
@@ -424,9 +424,7 @@ function savePrizes(prizes) {
     if (lastRow > 1) {
       prSheet.getRange(2, 1, lastRow - 1, 6).clearContent();
     }
-    if (!prSheet.getRange(1, 6).getValue()) {
-      prSheet.getRange(1, 6).setValue('추첨인원');
-    }
+    prSheet.getRange(1, 1, 1, 6).setValues([['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '순서']]);
 
     if (Array.isArray(prizes) && prizes.length > 0) {
       const rows = prizes.map((p, idx) => {
@@ -437,10 +435,10 @@ function savePrizes(prizes) {
         return [
           String(p.name || '').trim(),
           total,
+          drawCount,
           drawn,
-          `=B${r}-C${r}`,
-          String(p.note || '').trim(),
-          drawCount
+          `=B${r}-D${r}`,
+          String(p.note || '').trim()
         ];
       }).filter(r => r[0] !== '');
 
@@ -509,8 +507,8 @@ function drawWinners(prizeName, count, prizeRowIndex) {
       winnerLogRows.push([nowStr, prize.name, person.name, person.phone]);
     });
 
-    // 상품설정 시트 당첨수량 증가
-    prSheet.getRange(prize.rowIndex, 3).setValue(prize.drawn + picked.length);
+    // 상품설정 시트 당첨수량(4열/D열) 증가
+    prSheet.getRange(prize.rowIndex, 4).setValue(prize.drawn + picked.length);
 
     // 당첨기록 시트 추가
     if (winnerLogRows.length > 0) {
@@ -548,10 +546,10 @@ function cancelWinner(participantRowIndex) {
       return { ok: false, error: '당첨 상태인 참여자를 찾을 수 없습니다.' };
     }
 
-    // 상품 당첨수량 1 감소
+    // 상품 당첨수량(4열/D열) 1 감소
     const prize = data.prizes.find(p => p.name === person.prize);
     if (prize && prize.drawn > 0) {
-      prSheet.getRange(prize.rowIndex, 3).setValue(prize.drawn - 1);
+      prSheet.getRange(prize.rowIndex, 4).setValue(prize.drawn - 1);
     }
 
     // 참여자 상태 초기화
@@ -584,7 +582,7 @@ function resetAllDraws() {
     if (prSheet.getLastRow() > 1) {
       const count = prSheet.getLastRow() - 1;
       const zeroRows = Array.from({ length: count }, () => [0]);
-      prSheet.getRange(2, 3, count, 1).setValues(zeroRows);
+      prSheet.getRange(2, 4, count, 1).setValues(zeroRows);
     }
 
     if (wSheet && wSheet.getLastRow() > 1) {
