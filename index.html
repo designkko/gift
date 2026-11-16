@@ -685,7 +685,11 @@
       <div class="card">
         <div class="card-title">
           <span>참여자 등록 (구글시트 '참여자' 시트에 바로 입력)</span>
-          <button class="btn btn-ghost btn-sm" onclick="openBulkModal()">📋 여러 명 붙여넣기</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a class="btn btn-ghost btn-sm" href="register.html" target="_blank" style="text-decoration:none;">📝 등록 전용 페이지 열기</a>
+            <button class="btn btn-ghost btn-sm" onclick="copyRegisterLink()">🔗 등록 링크 복사</button>
+            <button class="btn btn-ghost btn-sm" onclick="openBulkModal()">📋 여러 명 붙여넣기</button>
+          </div>
         </div>
         <form class="form-row" onsubmit="handleAddParticipant(event)">
           <div class="field">
@@ -1686,6 +1690,16 @@
       document.getElementById('gas-url-input').value = getGasUrl();
       document.getElementById('config-modal').classList.add('open');
     }
+    async function copyRegisterLink() {
+      const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
+      try {
+        await navigator.clipboard.writeText(base);
+        showToast('🔗 참여자 등록 페이지 링크가 복사되었습니다!');
+      } catch (e) {
+        prompt('아래 참여자 등록 페이지 링크를 복사하세요:', base);
+      }
+    }
+
     async function copyShareLink() {
       const url = (document.getElementById('gas-url-input').value || getGasUrl()).trim();
       if (!url) return showToast('먼저 Apps Script 웹 앱 URL을 입력해주세요.');
