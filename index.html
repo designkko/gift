@@ -834,16 +834,26 @@
     const DEFAULT_GAS_URL = '';
     const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
     const STORAGE_KEY_DEMO = 'raffle_demo_state_v1';
+    let runtimeGasUrl = '';
+
+    function safeStorageGet(key) {
+      try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+    }
+    function safeStorageSet(key, val) {
+      try { localStorage.setItem(key, val); } catch (e) {}
+    }
 
     (function initApiFromQuery() {
       try {
         const params = new URLSearchParams(window.location.search);
-        const apiParam = (params.get('api') || '').trim();
+        let apiParam = (params.get('api') || '').trim();
+        if (!apiParam && window.location.hash && window.location.hash.includes('api=')) {
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          apiParam = (hashParams.get('api') || '').trim();
+        }
         if (apiParam) {
-          localStorage.setItem(STORAGE_KEY_URL, apiParam);
-          if (window.history && window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
+          runtimeGasUrl = apiParam;
+          safeStorageSet(STORAGE_KEY_URL, apiParam);
         }
       } catch (e) {}
     })();
@@ -922,7 +932,7 @@
     });
 
     function getGasUrl() {
-      return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_GAS_URL || '';
+      return runtimeGasUrl || safeStorageGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL || '';
     }
 
     function updateConnectionBadge(hasError = false) {
@@ -1751,8 +1761,9 @@
 
     async function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
-      if (url) localStorage.setItem(STORAGE_KEY_URL, url);
-      else localStorage.removeItem(STORAGE_KEY_URL);
+      runtimeGasUrl = url;
+      if (url) safeStorageSet(STORAGE_KEY_URL, url);
+      else { try { localStorage.removeItem(STORAGE_KEY_URL); } catch (e) {} }
       closeModal('config-modal');
       const ok = await refreshData();
       if (ok && url) {
