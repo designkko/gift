@@ -922,12 +922,16 @@
         return { ok: true, ...db };
       }
       if (action === 'addParticipant') {
+        const cleanName = payload.name.trim();
         const cleanPhone = normalizePhone(payload.phone);
-        const dup = db.participants.find(p => p.phone.replace(/\D/g, '') === cleanPhone.replace(/\D/g, ''));
-        if (dup) return { ok: false, error: `이미 등록된 전화번호입니다 (${dup.name}).` };
+        const targetDigits = cleanPhone.replace(/\D/g, '');
+        const dup = db.participants.find(
+          p => p.name.trim() === cleanName && p.phone.replace(/\D/g, '') === targetDigits
+        );
+        if (dup) return { ok: false, error: `이미 등록된 참여자입니다 (${dup.name} / ${dup.phone}).` };
         db.participants.push({
           rowIndex: Date.now(),
-          name: payload.name.trim(),
+          name: cleanName,
           phone: cleanPhone,
           isWinner: false,
           prize: '',
@@ -937,16 +941,18 @@
         return { ok: true, data: db };
       }
       if (action === 'addParticipantsBulk') {
-        const existing = new Set(db.participants.map(p => p.phone.replace(/\D/g, '')));
+        const existing = new Set(db.participants.map(p => `${p.name.trim()}|${p.phone.replace(/\D/g, '')}`));
         let added = 0, skipped = 0;
         payload.list.forEach((item, idx) => {
+          const n = String(item.name || '').trim();
           const ph = normalizePhone(item.phone);
           const digits = ph.replace(/\D/g, '');
-          if (!item.name || !digits || existing.has(digits)) { skipped++; return; }
-          existing.add(digits);
+          const key = `${n}|${digits}`;
+          if (!n || !digits || existing.has(key)) { skipped++; return; }
+          existing.add(key);
           db.participants.push({
             rowIndex: Date.now() + idx,
-            name: item.name.trim(),
+            name: n,
             phone: ph,
             isWinner: false,
             prize: '',
@@ -1106,14 +1112,27 @@
       const currentPrize = state.prizes.find(p => p.name === selectedPrizeName);
       const labelEl = document.getElementById('stage-prize-label');
       const drawBtn = document.getElementById('btn-draw');
+      const countInput = document.getElementById('draw-count');
       const eligibleCount = state.participants.filter(p => !p.isWinner).length;
 
       if (currentPrize) {
         labelEl.textContent = `🎁 ${currentPrize.name} (남은 수량: ${currentPrize.remaining}개)`;
         drawBtn.disabled = currentPrize.remaining <= 0 || eligibleCount === 0 || isDrawing;
+        if (currentPrize.remaining > 0) {
+          countInput.max = currentPrize.remaining;
+          countInput.min = 1;
+          const curVal = Number(countInput.value) || 1;
+          countInput.value = Math.min(currentPrize.remaining, Math.max(1, curVal));
+          countInput.disabled = false;
+        } else {
+          countInput.max = 0;
+          countInput.value = 0;
+          countInput.disabled = true;
+        }
       } else {
         labelEl.textContent = '추첨할 상품을 선택해주세요';
         drawBtn.disabled = true;
+        countInput.disabled = true;
       }
     }
 
@@ -1131,7 +1150,13 @@
       const prize = state.prizes.find(p => p.name === selectedPrizeName);
       if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
 
-      const reqCount = Math.max(1, Number(document.getElementById('draw-count').value) || 1);
+      const countEl = document.getElementById('draw-count');
+      const rawCount = Math.max(1, Number(countEl.value) || 1);
+      const reqCount = Math.min(prize.remaining, rawCount);
+      if (rawCount > prize.remaining) {
+        countEl.value = prize.remaining;
+        showToast(`남은 수량(${prize.remaining}개)에 맞춰 ${reqCount}명으로 추첨합니다.`);
+      }
       const eligible = state.participants.filter(p => !p.isWinner);
       if (eligible.length === 0) return showToast('추첨 가능한 미당첨 참여자가 없습니다.');
 

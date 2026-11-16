@@ -321,11 +321,14 @@ function addParticipant(name, phone) {
       pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
     }
 
-    // 중복 전화번호 체크
+    // 중복 체크 (이름과 전화번호가 모두 같은 경우만 등록 불가, 전화번호가 같아도 이름이 다르면 등록 가능)
     const existing = getAllData().participants;
-    const dup = existing.find(p => p.phone.replace(/\D/g, '') === cleanPhone.replace(/\D/g, ''));
+    const targetDigits = cleanPhone.replace(/\D/g, '');
+    const dup = existing.find(
+      p => p.name.trim() === cleanName && p.phone.replace(/\D/g, '') === targetDigits
+    );
     if (dup) {
-      return { ok: false, error: `이미 등록된 전화번호입니다 (${dup.name}).` };
+      return { ok: false, error: `이미 등록된 참여자입니다 (${dup.name} / ${dup.phone}).` };
     }
 
     const targetRow = pSheet.getLastRow() + 1;
@@ -349,8 +352,8 @@ function addParticipantsBulk(list) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
-    const existingPhones = new Set(
-      getAllData().participants.map(p => p.phone.replace(/\D/g, ''))
+    const existingKeys = new Set(
+      getAllData().participants.map(p => `${p.name.trim()}|${p.phone.replace(/\D/g, '')}`)
     );
 
     const rowsToAdd = [];
@@ -360,11 +363,12 @@ function addParticipantsBulk(list) {
       const n = String(item.name || '').trim();
       const ph = normalizePhone_(item.phone);
       const digits = ph.replace(/\D/g, '');
-      if (!n || !digits || existingPhones.has(digits)) {
+      const key = `${n}|${digits}`;
+      if (!n || !digits || existingKeys.has(key)) {
         skipped++;
         return;
       }
-      existingPhones.add(digits);
+      existingKeys.add(key);
       rowsToAdd.push([n, ph, '미당첨', '', '']);
     });
 
