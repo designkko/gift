@@ -59,6 +59,9 @@ function doPost(e) {
       case 'cancelWinner':
         result = cancelWinner(body.rowIndex);
         break;
+      case 'toggleWinnerReceived':
+        result = toggleWinnerReceived(body.rowIndex, body.received);
+        break;
       case 'resetAllDraws':
         result = resetAllDraws();
         break;
@@ -150,13 +153,14 @@ function setupSheets(silent) {
     wSheet = ss.insertSheet(SHEET_NAMES.WINNERS);
   }
   if (wSheet.getLastRow() === 0) {
-    const wHeaders = [['당첨일시', '상품명', '이름', '전화번호']];
-    wSheet.getRange(1, 1, 1, 4).setValues(wHeaders);
-    styleHeader_(wSheet, 4, '#D97706');
+    const wHeaders = [['당첨일시', '상품명', '이름', '전화번호', '선물수령']];
+    wSheet.getRange(1, 1, 1, 5).setValues(wHeaders);
+    styleHeader_(wSheet, 5, '#D97706');
     wSheet.setColumnWidth(1, 170);
     wSheet.setColumnWidth(2, 180);
     wSheet.setColumnWidth(3, 130);
     wSheet.setColumnWidth(4, 160);
+    wSheet.setColumnWidth(5, 110);
     wSheet.getRange('D2:D2000').setNumberFormat('@');
     wSheet.setFrozenRows(1);
   }
@@ -275,15 +279,18 @@ function getAllData() {
 
   const winners = [];
   if (wSheet && wSheet.getLastRow() > 1) {
-    const rows = wSheet.getRange(2, 1, wSheet.getLastRow() - 1, 4).getDisplayValues();
+    const rows = wSheet.getRange(2, 1, wSheet.getLastRow() - 1, 5).getDisplayValues();
     rows.forEach((row, idx) => {
       if (!row[1] && !row[2]) return;
+      const recStr = String(row[4] || '').trim();
+      const received = recStr === '수령완료' || recStr === '수령' || recStr.toUpperCase() === 'TRUE' || recStr === 'O';
       winners.push({
         rowIndex: idx + 2,
         wonAt: row[0],
         prize: row[1],
         name: row[2],
-        phone: row[3]
+        phone: row[3],
+        received: received
       });
     });
   }
@@ -495,7 +502,7 @@ function drawWinners(prizeName, count, prizeRowIndex) {
     const winnerLogRows = [];
     picked.forEach(person => {
       pSheet.getRange(person.rowIndex, 3, 1, 3).setValues([['당첨', prize.name, nowStr]]);
-      winnerLogRows.push([nowStr, prize.name, person.name, person.phone]);
+      winnerLogRows.push([nowStr, prize.name, person.name, person.phone, '미수령']);
     });
 
     // 상품설정 시트 당첨수량(4열/D열) 증가
@@ -505,7 +512,7 @@ function drawWinners(prizeName, count, prizeRowIndex) {
     if (winnerLogRows.length > 0) {
       const startRow = wSheet.getLastRow() + 1;
       wSheet.getRange(startRow, 4, winnerLogRows.length, 1).setNumberFormat('@');
-      wSheet.getRange(startRow, 1, winnerLogRows.length, 4).setValues(winnerLogRows);
+      wSheet.getRange(startRow, 1, winnerLogRows.length, 5).setValues(winnerLogRows);
     }
 
     return {
@@ -553,6 +560,28 @@ function cancelWinner(participantRowIndex) {
 }
 
 /**
+ * 당첨기록 선물 수령 여부 체크
+ */
+function toggleWinnerReceived(winnerRowIndex, received) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const wSheet = ss.getSheetByName(SHEET_NAMES.WINNERS);
+    if (!wSheet) return { ok: false, error: '당첨기록 시트를 찾을 수 없습니다.' };
+    if (!wSheet.getRange(1, 5).getValue()) {
+      wSheet.getRange(1, 5).setValue('선물수령');
+    }
+    if (winnerRowIndex >= 2 && winnerRowIndex <= wSheet.getLastRow()) {
+      wSheet.getRange(winnerRowIndex, 5).setValue(received ? '수령완료' : '미수령');
+    }
+    return { ok: true, data: getAllData() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * 전체 당첨 내역 초기화 (참여자 명단과 상품 총수량은 유지)
  */
 function resetAllDraws() {
@@ -577,7 +606,7 @@ function resetAllDraws() {
     }
 
     if (wSheet && wSheet.getLastRow() > 1) {
-      wSheet.getRange(2, 1, wSheet.getLastRow() - 1, 4).clearContent();
+      wSheet.getRange(2, 1, wSheet.getLastRow() - 1, 5).clearContent();
     }
 
     return { ok: true, data: getAllData() };

@@ -773,6 +773,7 @@
                 <th>상품명</th>
                 <th>이름</th>
                 <th>전화번호</th>
+                <th style="width:120px;">선물 수령</th>
               </tr>
             </thead>
             <tbody id="winners-tbody"></tbody>
@@ -899,6 +900,7 @@
             case 'savePrizes': runner.savePrizes(payload.prizes); break;
             case 'drawWinners': runner.drawWinners(payload.prizeName, payload.count, payload.prizeRowIndex); break;
             case 'cancelWinner': runner.cancelWinner(payload.rowIndex); break;
+            case 'toggleWinnerReceived': runner.toggleWinnerReceived(payload.rowIndex, payload.received); break;
             case 'resetAllDraws': runner.resetAllDraws(); break;
             default: reject(new Error('지원하지 않는 작업: ' + action));
           }
@@ -1042,11 +1044,18 @@
           [pool[i], pool[j]] = [pool[j], pool[i]];
         }
         const picked = pool.slice(0, count);
-        picked.forEach(person => {
+        picked.forEach((person, idx) => {
           person.isWinner = true;
           person.prize = prize.name;
           person.wonAt = nowStr;
-          db.winners.unshift({ wonAt: nowStr, prize: prize.name, name: person.name, phone: person.phone });
+          db.winners.unshift({
+            rowIndex: Date.now() + idx,
+            wonAt: nowStr,
+            prize: prize.name,
+            name: person.name,
+            phone: person.phone,
+            received: false
+          });
         });
         prize.drawn += picked.length;
         prize.remaining = prize.total - prize.drawn;
@@ -1065,6 +1074,12 @@
           person.prize = '';
           person.wonAt = '';
         }
+        saveDemoState(db);
+        return { ok: true, data: db };
+      }
+      if (action === 'toggleWinnerReceived') {
+        const w = db.winners.find(item => item.rowIndex === payload.rowIndex);
+        if (w) w.received = !!payload.received;
         saveDemoState(db);
         return { ok: true, data: db };
       }
@@ -1488,7 +1503,7 @@
     function renderWinners() {
       const tbody = document.getElementById('winners-tbody');
       if (state.winners.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:24px;">아직 당첨 기록이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">아직 당첨 기록이 없습니다.</td></tr>';
         return;
       }
       tbody.innerHTML = state.winners.map(w => `
@@ -1497,8 +1512,25 @@
           <td><strong>${escapeHtml(w.prize)}</strong></td>
           <td>${escapeHtml(displayName(w.name))}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(displayPhone(w.phone))}</td>
+          <td>
+            <label class="toggle-label" style="color:${w.received ? '#6ee7b7' : 'var(--text-muted)'}; font-weight:600;">
+              <input type="checkbox" ${w.received ? 'checked' : ''} onchange="handleToggleReceived(${w.rowIndex}, this.checked)" />
+              ${w.received ? '수령완료' : '미수령'}
+            </label>
+          </td>
         </tr>
       `).join('');
+    }
+
+    async function handleToggleReceived(rowIndex, received) {
+      try {
+        const res = await callBackend('toggleWinnerReceived', { rowIndex, received });
+        if (!res.ok) return showToast('❌ ' + res.error);
+        applyState(res);
+        showToast(received ? '✅ 선물 수령 확인되었습니다.' : '미수령으로 변경되었습니다.');
+      } catch (err) {
+        showToast('❌ ' + (err.message || '수령 상태 변경 실패'));
+      }
     }
 
     async function confirmResetAll() {
@@ -1515,8 +1547,16 @@
 
     function downloadWinnersCsv() {
       if (state.winners.length === 0) return showToast('내보낼 당첨 기록이 없습니다.');
-      const header = ['당첨일시', '상품명', '이름', '전화번호'];
-      const rows = state.winners.map(w => [w.wonAt, w.prize, w.name, w.phone]);
+      const header = ['순서', '당첨일시', '상품명', '이름', '전화번호', '선물수령'];
+      const ordered = state.winners.slice().reverse();
+      const rows = ordered.map((w, idx) => [
+        idx + 1,
+        w.wonAt,
+        w.prize,
+        w.name,
+        w.phone,
+        w.received ? '수령완료' : '미수령'
+      ]);
       const csv = '\uFEFF' + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
