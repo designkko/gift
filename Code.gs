@@ -111,22 +111,25 @@ function setupSheets(silent) {
     pSheet = ss.insertSheet(SHEET_NAMES.PARTICIPANTS);
   }
   if (pSheet.getLastRow() === 0) {
-    const pHeaders = [['이름', '전화번호', '당첨여부', '당첨상품', '당첨일시']];
-    pSheet.getRange(1, 1, 1, 5).setValues(pHeaders);
-    styleHeader_(pSheet, 5, '#4F46E5');
-    pSheet.setColumnWidth(1, 130);
-    pSheet.setColumnWidth(2, 160);
-    pSheet.setColumnWidth(3, 100);
-    pSheet.setColumnWidth(4, 180);
-    pSheet.setColumnWidth(5, 170);
+    const pHeaders = [['등록시간', '이름', '전화번호', '당첨여부', '당첨상품', '당첨일시']];
+    pSheet.getRange(1, 1, 1, 6).setValues(pHeaders);
+    styleHeader_(pSheet, 6, '#4F46E5');
+    pSheet.setColumnWidth(1, 165);
+    pSheet.setColumnWidth(2, 130);
+    pSheet.setColumnWidth(3, 160);
+    pSheet.setColumnWidth(4, 100);
+    pSheet.setColumnWidth(5, 180);
+    pSheet.setColumnWidth(6, 170);
     // 전화번호 열을 텍스트 서식으로 지정 (앞자리 0 유지)
-    pSheet.getRange('B2:B2000').setNumberFormat('@');
+    pSheet.getRange('C2:C2000').setNumberFormat('@');
     // 당첨여부 드롭다운 유효성 검사
     const rule = SpreadsheetApp.newDataValidation()
       .requireValueInList(['미당첨', '당첨'], true)
       .build();
-    pSheet.getRange('C2:C2000').setDataValidation(rule);
+    pSheet.getRange('D2:D2000').setDataValidation(rule);
     pSheet.setFrozenRows(1);
+  } else {
+    ensureParticipantTimestampCol_(pSheet);
   }
 
   // 2) 상품설정 시트
@@ -170,6 +173,19 @@ function setupSheets(silent) {
   }
 }
 
+function ensureParticipantTimestampCol_(pSheet) {
+  if (!pSheet || pSheet.getLastRow() === 0) return;
+  const firstHeader = String(pSheet.getRange(1, 1).getValue() || '').trim();
+  if (firstHeader === '이름') {
+    pSheet.insertColumnBefore(1);
+    pSheet.getRange(1, 1).setValue('등록시간');
+    pSheet.setColumnWidth(1, 165);
+  }
+}
+
+function nowString_() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
+}
 function styleHeader_(sheet, colCount, bgColor) {
   const range = sheet.getRange(1, 1, 1, colCount);
   range.setBackground(bgColor)
@@ -190,17 +206,19 @@ function insertSampleData() {
   const prSheet = ss.getSheetByName(SHEET_NAMES.PRIZES);
 
   if (pSheet.getLastRow() <= 1) {
+    const nowStr = nowString_();
     const sampleParticipants = [
-      ['김민준', '010-1234-5678', '미당첨', '', ''],
-      ['이서연', '010-2345-6789', '미당첨', '', ''],
-      ['박도윤', '010-3456-7890', '미당첨', '', ''],
-      ['최지우', '010-4567-8901', '미당첨', '', ''],
-      ['정하은', '010-5678-9012', '미당첨', '', ''],
-      ['강시우', '010-6789-0123', '미당첨', '', ''],
-      ['조수아', '010-7890-1234', '미당첨', '', ''],
-      ['윤예준', '010-8901-2345', '미당첨', '', '']
+      [nowStr, '김민준', '010-1234-5678', '미당첨', '', ''],
+      [nowStr, '이서연', '010-2345-6789', '미당첨', '', ''],
+      [nowStr, '박도윤', '010-3456-7890', '미당첨', '', ''],
+      [nowStr, '최지우', '010-4567-8901', '미당첨', '', ''],
+      [nowStr, '정하은', '010-5678-9012', '미당첨', '', ''],
+      [nowStr, '강시우', '010-6789-0123', '미당첨', '', ''],
+      [nowStr, '조수아', '010-7890-1234', '미당첨', '', ''],
+      [nowStr, '윤예준', '010-8901-2345', '미당첨', '', '']
     ];
-    pSheet.getRange(2, 1, sampleParticipants.length, 5).setValues(sampleParticipants);
+    pSheet.getRange(2, 3, sampleParticipants.length, 1).setNumberFormat('@');
+    pSheet.getRange(2, 1, sampleParticipants.length, 6).setValues(sampleParticipants);
   }
 
   if (prSheet.getLastRow() <= 1) {
@@ -231,25 +249,28 @@ function getAllData() {
   }
 
   const pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
+  ensureParticipantTimestampCol_(pSheet);
   const prSheet = ss.getSheetByName(SHEET_NAMES.PRIZES);
   const wSheet = ss.getSheetByName(SHEET_NAMES.WINNERS);
 
   const participants = [];
   if (pSheet.getLastRow() > 1) {
-    const rows = pSheet.getRange(2, 1, pSheet.getLastRow() - 1, 5).getDisplayValues();
+    const rows = pSheet.getRange(2, 1, pSheet.getLastRow() - 1, 6).getDisplayValues();
     rows.forEach((row, idx) => {
-      const name = (row[0] || '').trim();
-      const phone = (row[1] || '').trim();
+      const createdAt = (row[0] || '').trim();
+      const name = (row[1] || '').trim();
+      const phone = (row[2] || '').trim();
       if (!name && !phone) return;
-      const status = (row[2] || '').trim();
+      const status = (row[3] || '').trim();
       const isWinner = status === '당첨' || status.toUpperCase() === 'TRUE' || status === 'O';
       participants.push({
         rowIndex: idx + 2,
+        createdAt: createdAt,
         name: name,
         phone: phone,
         isWinner: isWinner,
-        prize: (row[3] || '').trim(),
-        wonAt: (row[4] || '').trim()
+        prize: (row[4] || '').trim(),
+        wonAt: (row[5] || '').trim()
       });
     });
   }
@@ -334,8 +355,9 @@ function addParticipant(name, phone) {
     }
 
     const targetRow = pSheet.getLastRow() + 1;
-    pSheet.getRange(targetRow, 2).setNumberFormat('@');
-    pSheet.getRange(targetRow, 1, 1, 5).setValues([[cleanName, cleanPhone, '미당첨', '', '']]);
+    const nowStr = nowString_();
+    pSheet.getRange(targetRow, 3).setNumberFormat('@');
+    pSheet.getRange(targetRow, 1, 1, 6).setValues([[nowStr, cleanName, cleanPhone, '미당첨', '', '']]);
     return { ok: true, data: getAllData() };
   } finally {
     lock.releaseLock();
@@ -360,6 +382,7 @@ function addParticipantsBulk(list) {
 
     const rowsToAdd = [];
     let skipped = 0;
+    const nowStr = nowString_();
 
     list.forEach(item => {
       const n = String(item.name || '').trim();
@@ -371,13 +394,13 @@ function addParticipantsBulk(list) {
         return;
       }
       existingKeys.add(key);
-      rowsToAdd.push([n, ph, '미당첨', '', '']);
+      rowsToAdd.push([nowStr, n, ph, '미당첨', '', '']);
     });
 
     if (rowsToAdd.length > 0) {
       const startRow = pSheet.getLastRow() + 1;
-      pSheet.getRange(startRow, 2, rowsToAdd.length, 1).setNumberFormat('@');
-      pSheet.getRange(startRow, 1, rowsToAdd.length, 5).setValues(rowsToAdd);
+      pSheet.getRange(startRow, 3, rowsToAdd.length, 1).setNumberFormat('@');
+      pSheet.getRange(startRow, 1, rowsToAdd.length, 6).setValues(rowsToAdd);
     }
 
     return {
@@ -501,7 +524,7 @@ function drawWinners(prizeName, count, prizeRowIndex) {
     // 참여자 시트 업데이트 (당첨여부 = 당첨 -> 이후 추첨에서 제외)
     const winnerLogRows = [];
     picked.forEach(person => {
-      pSheet.getRange(person.rowIndex, 3, 1, 3).setValues([['당첨', prize.name, nowStr]]);
+      pSheet.getRange(person.rowIndex, 4, 1, 3).setValues([['당첨', prize.name, nowStr]]);
       winnerLogRows.push([nowStr, prize.name, person.name, person.phone, '미수령']);
     });
 
@@ -551,7 +574,7 @@ function cancelWinner(participantRowIndex) {
     }
 
     // 참여자 상태 초기화
-    pSheet.getRange(person.rowIndex, 3, 1, 3).setValues([['미당첨', '', '']]);
+    pSheet.getRange(person.rowIndex, 4, 1, 3).setValues([['미당첨', '', '']]);
 
     return { ok: true, data: getAllData() };
   } finally {
@@ -596,7 +619,7 @@ function resetAllDraws() {
     if (pSheet.getLastRow() > 1) {
       const count = pSheet.getLastRow() - 1;
       const resetRows = Array.from({ length: count }, () => ['미당첨', '', '']);
-      pSheet.getRange(2, 3, count, 3).setValues(resetRows);
+      pSheet.getRange(2, 4, count, 3).setValues(resetRows);
     }
 
     if (prSheet.getLastRow() > 1) {
