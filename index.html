@@ -511,7 +511,7 @@
             <span>2. 추첨 무대</span>
             <label class="toggle-label">
               <input type="checkbox" id="mask-phone-toggle" checked onchange="renderAll()" />
-              전화번호 뒷자리만 표시 (개인정보 보호)
+              이름 가운데·전화번호 가리기 (개인정보 보호)
             </label>
           </div>
 
@@ -998,7 +998,7 @@
       const animTimer = setInterval(() => {
         const rand = eligible[Math.floor(Math.random() * eligible.length)];
         slotEl.innerHTML = `
-          <div class="slot-name" style="opacity:0.85;">${escapeHtml(rand.name)}</div>
+          <div class="slot-name" style="opacity:0.85;">${escapeHtml(displayName(rand.name))}</div>
           <div class="slot-phone">${escapeHtml(displayPhone(rand.phone))}</div>
         `;
       }, 65);
@@ -1018,7 +1018,7 @@
           const picked = res.picked || [];
           if (picked.length === 1) {
             slotEl.innerHTML = `
-              <div class="slot-name">🎊 ${escapeHtml(picked[0].name)} 🎊</div>
+              <div class="slot-name">🎊 ${escapeHtml(displayName(picked[0].name))} 🎊</div>
               <div class="slot-phone">${escapeHtml(displayPhone(picked[0].phone))}</div>
               <div style="font-size:0.85rem; color:#6ee7b7; margin-top:4px;">당첨! (다음 추첨 대상에서 자동 제외됨)</div>
             `;
@@ -1027,7 +1027,7 @@
               <div class="multi-winners-grid">
                 ${picked.map(w => `
                   <div class="winner-chip">
-                    <strong>🎉 ${escapeHtml(w.name)}</strong>
+                    <strong>🎉 ${escapeHtml(displayName(w.name))}</strong>
                     <span>${escapeHtml(displayPhone(w.phone))}</span>
                   </div>
                 `).join('')}
@@ -1066,7 +1066,7 @@
       tbody.innerHTML = filtered.map((p, idx) => `
         <tr>
           <td>${idx + 1}</td>
-          <td><strong>${escapeHtml(p.name)}</strong></td>
+          <td><strong>${escapeHtml(displayName(p.name))}</strong></td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(displayPhone(p.phone))}</td>
           <td>
             ${p.isWinner
@@ -1179,7 +1179,7 @@
         <tr>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
-          <td>${escapeHtml(w.name)}</td>
+          <td>${escapeHtml(displayName(w.name))}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(displayPhone(w.phone))}</td>
         </tr>
       `).join('');
@@ -1207,6 +1207,14 @@
       a.href = URL.createObjectURL(blob);
       a.download = `당첨기록_${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
+    }
+
+    function displayName(name) {
+      const mask = document.getElementById('mask-phone-toggle').checked;
+      const s = String(name || '').trim();
+      if (!mask || s.length <= 1) return s;
+      if (s.length === 2) return s[0] + '*';
+      return s[0] + '*'.repeat(s.length - 2) + s[s.length - 1];
     }
 
     function displayPhone(phone) {
