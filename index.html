@@ -906,8 +906,10 @@
         const res = await callBackend('getData');
         if (!res.ok) throw new Error(res.error);
         applyState(res);
+        return true;
       } catch (err) {
         showToast('❌ 데이터 불러오기 실패: ' + err.message);
+        return false;
       }
     }
 
@@ -1257,12 +1259,15 @@
     }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-    function saveGasUrl() {
+    async function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
       if (url) localStorage.setItem(STORAGE_KEY_URL, url);
       else localStorage.removeItem(STORAGE_KEY_URL);
       closeModal('config-modal');
-      refreshData();
+      const ok = await refreshData();
+      if (ok && url) {
+        showToast(`✅ 구글시트 연결 완료! (참여자 ${state.participants.length}명, 상품 ${state.prizes.length}개)`);
+      }
     }
 
     function showToast(msg) {

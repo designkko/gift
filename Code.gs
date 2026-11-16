@@ -224,6 +224,12 @@ function insertSampleData() {
  */
 function getAllData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) {
+    return {
+      ok: false,
+      error: '연결된 구글시트를 찾을 수 없습니다. 구글시트 상단 [확장 프로그램 > Apps Script]에서 코드를 넣고 배포해주세요.'
+    };
+  }
   if (!ss.getSheetByName(SHEET_NAMES.PARTICIPANTS) || !ss.getSheetByName(SHEET_NAMES.PRIZES)) {
     setupSheets(true);
   }
