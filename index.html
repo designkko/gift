@@ -575,7 +575,10 @@
   <div id="fs-overlay" class="fs-overlay">
     <div class="fs-prize" id="fs-prize"></div>
     <div id="fs-body"></div>
-    <button id="fs-close-btn" class="btn btn-primary fs-close-btn" onclick="closeFullscreenDraw()" style="display:none;">확인 (닫기)</button>
+    <div id="fs-actions" style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+      <button id="fs-start-btn" class="btn draw-btn-big fs-close-btn" onclick="startDraw()" style="display:none;">✨ 추첨 시작!</button>
+      <button id="fs-close-btn" class="btn btn-ghost fs-close-btn" onclick="closeFullscreenDraw()" style="display:none;">닫기</button>
+    </div>
   </div>
 
   <div class="container">
@@ -640,7 +643,7 @@
             <div class="stage-prize-label" id="stage-prize-label">왼쪽에서 추첨할 상품을 선택하세요</div>
             <div class="slot-display" id="slot-display">
               <div class="slot-name">준비 완료</div>
-              <div class="slot-phone">추첨 시작 버튼을 눌러주세요</div>
+              <div class="slot-phone">전체 화면 버튼을 눌러주세요</div>
             </div>
 
             <div class="draw-controls">
@@ -648,7 +651,7 @@
                 <label for="draw-count" style="font-size:0.86rem; color:var(--text-muted);">추첨 인원</label>
                 <input id="draw-count" type="number" min="1" max="50" value="1" style="width:76px; text-align:center;" />
               </div>
-              <button id="btn-draw" class="btn draw-btn-big" onclick="startDraw()">✨ 추첨 시작!</button>
+              <button id="btn-draw" class="btn draw-btn-big" onclick="openFullscreenDraw()">🖥️ 전체 화면</button>
             </div>
           </div>
         </div>
@@ -1136,6 +1139,37 @@
       }
     }
 
+    function openFullscreenDraw() {
+      if (isDrawing) return;
+      const prize = state.prizes.find(p => p.name === selectedPrizeName);
+      if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
+
+      const countEl = document.getElementById('draw-count');
+      const rawCount = Math.max(1, Number(countEl.value) || 1);
+      const reqCount = Math.min(prize.remaining, rawCount);
+      if (rawCount > prize.remaining) {
+        countEl.value = prize.remaining;
+      }
+      const eligible = state.participants.filter(p => !p.isWinner);
+      if (eligible.length === 0) return showToast('추첨 가능한 미당첨 참여자가 없습니다.');
+
+      const fsOverlay = document.getElementById('fs-overlay');
+      const fsPrize = document.getElementById('fs-prize');
+      const fsBody = document.getElementById('fs-body');
+      const fsStartBtn = document.getElementById('fs-start-btn');
+      const fsCloseBtn = document.getElementById('fs-close-btn');
+
+      fsPrize.textContent = `🎁 ${prize.name} (${reqCount}명 추첨 · 남은 수량 ${prize.remaining}개)`;
+      fsBody.innerHTML = `
+        <div class="fs-winner-name" style="font-size:clamp(2.4rem, 7vw, 4.5rem);">추첨 준비 완료</div>
+        <div class="fs-subnote" style="font-size:1.15rem;">현재 추첨 대상 ${eligible.length}명 · 아래 추첨 시작 버튼을 눌러주세요</div>
+      `;
+      fsStartBtn.style.display = 'inline-flex';
+      fsCloseBtn.textContent = '닫기';
+      fsCloseBtn.style.display = 'inline-flex';
+      fsOverlay.classList.add('open');
+    }
+
     function closeFullscreenDraw() {
       if (isDrawing) return;
       document.getElementById('fs-overlay').classList.remove('open');
@@ -1164,12 +1198,14 @@
       document.getElementById('btn-draw').disabled = true;
       const slotEl = document.getElementById('slot-display');
 
-      // 전체화면 오버레이 열기
+      // 전체화면 오버레이 상태 전환 (카운트다운 중 버튼 숨김)
       const fsOverlay = document.getElementById('fs-overlay');
       const fsPrize = document.getElementById('fs-prize');
       const fsBody = document.getElementById('fs-body');
+      const fsStartBtn = document.getElementById('fs-start-btn');
       const fsCloseBtn = document.getElementById('fs-close-btn');
       fsPrize.textContent = `🎁 ${prize.name} (${reqCount}명 추첨)`;
+      fsStartBtn.style.display = 'none';
       fsCloseBtn.style.display = 'none';
       fsOverlay.classList.add('open');
 
@@ -1264,6 +1300,7 @@
         showToast('❌ 추첨 오류: ' + err.message);
       } finally {
         isDrawing = false;
+        fsCloseBtn.textContent = '확인 (닫기)';
         fsCloseBtn.style.display = 'inline-flex';
         renderDrawSection();
       }
