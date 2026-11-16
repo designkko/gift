@@ -452,10 +452,131 @@
 
     .modal h3 { margin-bottom: 10px; font-size: 1.1rem; }
     .modal p { font-size: 0.86rem; color: var(--text-muted); margin-bottom: 12px; }
+
+    /* 전체화면 추첨 오버레이 */
+    .fs-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 950;
+      background: radial-gradient(circle at center, #1e1b4b 0%, #090d1a 70%, #020617 100%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .fs-overlay.open { display: flex; }
+
+    .fs-prize {
+      font-size: clamp(1.2rem, 3vw, 1.9rem);
+      font-weight: 800;
+      color: #fbbf24;
+      margin-bottom: 24px;
+      letter-spacing: -0.01em;
+    }
+
+    .fs-countdown {
+      font-size: clamp(6rem, 22vw, 13rem);
+      font-weight: 900;
+      line-height: 1;
+      background: linear-gradient(135deg, #a5b4fc, #f472b6, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 10px 35px rgba(99, 102, 241, 0.55));
+      animation: fsPop 0.9s ease-out;
+      margin-bottom: 24px;
+    }
+
+    @keyframes fsPop {
+      0% { transform: scale(0.45); opacity: 0; }
+      35% { transform: scale(1.12); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .fs-rolling {
+      font-size: clamp(1.2rem, 2.8vw, 1.8rem);
+      color: #cbd5e1;
+      font-weight: 700;
+      min-height: 54px;
+    }
+
+    .fs-result-title {
+      font-size: clamp(1.3rem, 3.2vw, 2.2rem);
+      font-weight: 800;
+      color: #6ee7b7;
+      margin-bottom: 18px;
+      animation: fsPop 0.6s ease-out;
+    }
+
+    .fs-winner-name {
+      font-size: clamp(3rem, 10vw, 6.2rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-shadow: 0 8px 40px rgba(99, 102, 241, 0.65);
+      margin-bottom: 10px;
+      animation: fsPop 0.6s ease-out;
+    }
+
+    .fs-winner-phone {
+      font-size: clamp(1.4rem, 4vw, 2.4rem);
+      color: #e2e8f0;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 18px;
+    }
+
+    .fs-multi-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      max-width: 960px;
+      margin-bottom: 22px;
+      animation: fsPop 0.6s ease-out;
+    }
+
+    .fs-winner-card {
+      background: rgba(16, 185, 129, 0.16);
+      border: 2px solid rgba(16, 185, 129, 0.55);
+      border-radius: 18px;
+      padding: 18px 28px;
+      min-width: 210px;
+    }
+
+    .fs-winner-card strong {
+      display: block;
+      font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+      margin-bottom: 4px;
+    }
+
+    .fs-winner-card span {
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      color: #a7f3d0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fs-subnote {
+      font-size: 1rem;
+      color: #94a3b8;
+      margin-bottom: 30px;
+    }
+
+    .fs-close-btn {
+      padding: 14px 34px;
+      font-size: 1.05rem;
+      border-radius: 14px;
+    }
   </style>
 </head>
 <body>
   <canvas id="confetti-canvas"></canvas>
+
+  <div id="fs-overlay" class="fs-overlay">
+    <div class="fs-prize" id="fs-prize"></div>
+    <div id="fs-body"></div>
+    <button id="fs-close-btn" class="btn btn-primary fs-close-btn" onclick="closeFullscreenDraw()" style="display:none;">확인 (닫기)</button>
+  </div>
 
   <div class="container">
     <header>
@@ -996,6 +1117,15 @@
       }
     }
 
+    function closeFullscreenDraw() {
+      if (isDrawing) return;
+      document.getElementById('fs-overlay').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeFullscreenDraw();
+    });
+
     async function startDraw() {
       if (isDrawing) return;
       const prize = state.prizes.find(p => p.name === selectedPrizeName);
@@ -1009,35 +1139,86 @@
       document.getElementById('btn-draw').disabled = true;
       const slotEl = document.getElementById('slot-display');
 
-      // 슬롯머신 롤링 애니메이션
+      // 전체화면 오버레이 열기
+      const fsOverlay = document.getElementById('fs-overlay');
+      const fsPrize = document.getElementById('fs-prize');
+      const fsBody = document.getElementById('fs-body');
+      const fsCloseBtn = document.getElementById('fs-close-btn');
+      fsPrize.textContent = `🎁 ${prize.name} (${reqCount}명 추첨)`;
+      fsCloseBtn.style.display = 'none';
+      fsOverlay.classList.add('open');
+
+      const renderCountdown = (num) => {
+        const rand = eligible[Math.floor(Math.random() * eligible.length)];
+        fsBody.innerHTML = `
+          <div class="fs-countdown">${num}</div>
+          <div class="fs-rolling" id="fs-rolling">${escapeHtml(displayName(rand.name))} · ${escapeHtml(displayPhone(rand.phone))}</div>
+        `;
+      };
+
+      renderCountdown(5);
+
+      // 하단 롤링 이름 애니메이션
       const animTimer = setInterval(() => {
         const rand = eligible[Math.floor(Math.random() * eligible.length)];
+        const rollingEl = document.getElementById('fs-rolling');
+        if (rollingEl) {
+          rollingEl.textContent = `${displayName(rand.name)} · ${displayPhone(rand.phone)}`;
+        }
         slotEl.innerHTML = `
           <div class="slot-name" style="opacity:0.85;">${escapeHtml(displayName(rand.name))}</div>
           <div class="slot-phone">${escapeHtml(displayPhone(rand.phone))}</div>
         `;
-      }, 65);
+      }, 75);
+
+      // 5 -> 4 -> 3 -> 2 -> 1 카운트다운 (5초)
+      const countdownPromise = (async () => {
+        for (let n = 5; n >= 1; n--) {
+          renderCountdown(n);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      })();
 
       try {
         const [res] = await Promise.all([
           callBackend('drawWinners', { prizeName: prize.name, count: reqCount }),
-          new Promise(r => setTimeout(r, 1500))
+          countdownPromise
         ]);
         clearInterval(animTimer);
 
         if (!res.ok) {
+          fsBody.innerHTML = `<div class="fs-result-title" style="color:#fca5a5;">❌ ${escapeHtml(res.error)}</div>`;
           slotEl.innerHTML = `<div class="slot-name" style="font-size:1.4rem; color:#fca5a5;">${escapeHtml(res.error)}</div>`;
           showToast('❌ ' + res.error);
         } else {
           applyState(res);
           const picked = res.picked || [];
           if (picked.length === 1) {
+            const w = picked[0];
+            fsBody.innerHTML = `
+              <div class="fs-result-title">🎊 축하합니다! 당첨! 🎊</div>
+              <div class="fs-winner-name">${escapeHtml(displayName(w.name))}</div>
+              <div class="fs-winner-phone">${escapeHtml(displayPhone(w.phone))}</div>
+              <div class="fs-subnote">당첨자는 다음 추첨 대상에서 자동으로 제외됩니다.</div>
+            `;
             slotEl.innerHTML = `
-              <div class="slot-name">🎊 ${escapeHtml(displayName(picked[0].name))} 🎊</div>
-              <div class="slot-phone">${escapeHtml(displayPhone(picked[0].phone))}</div>
+              <div class="slot-name">🎊 ${escapeHtml(displayName(w.name))} 🎊</div>
+              <div class="slot-phone">${escapeHtml(displayPhone(w.phone))}</div>
               <div style="font-size:0.85rem; color:#6ee7b7; margin-top:4px;">당첨! (다음 추첨 대상에서 자동 제외됨)</div>
             `;
           } else {
+            fsBody.innerHTML = `
+              <div class="fs-result-title">🎊 축하합니다! 총 ${picked.length}명 당첨! 🎊</div>
+              <div class="fs-multi-grid">
+                ${picked.map(w => `
+                  <div class="fs-winner-card">
+                    <strong>🎉 ${escapeHtml(displayName(w.name))}</strong>
+                    <span>${escapeHtml(displayPhone(w.phone))}</span>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="fs-subnote">당첨자는 다음 추첨 대상에서 자동으로 제외됩니다.</div>
+            `;
             slotEl.innerHTML = `
               <div class="multi-winners-grid">
                 ${picked.map(w => `
@@ -1054,9 +1235,11 @@
         }
       } catch (err) {
         clearInterval(animTimer);
+        fsBody.innerHTML = `<div class="fs-result-title" style="color:#fca5a5;">❌ 추첨 오류: ${escapeHtml(err.message)}</div>`;
         showToast('❌ 추첨 오류: ' + err.message);
       } finally {
         isDrawing = false;
+        fsCloseBtn.style.display = 'inline-flex';
         renderDrawSection();
       }
     }
