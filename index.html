@@ -623,7 +623,10 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">당첨 완료 (제외됨)</div>
-        <div class="stat-value" id="stat-won" style="color:#34d399;">0명</div>
+        <div class="stat-value" style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
+          <span id="stat-won" style="color:#34d399;">0명</span>
+          <span id="stat-unclaimed" style="font-size:0.95rem; font-weight:700; color:#f87171;">미수령 0개</span>
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-label">남은 상품 수량</div>
@@ -1131,11 +1134,13 @@
       const total = state.participants.length;
       const won = state.participants.filter(p => p.isWinner).length;
       const eligible = total - won;
+      const unclaimed = state.winners.filter(w => !w.received).length;
       const prizesLeft = state.prizes.reduce((sum, p) => sum + (p.remaining || 0), 0);
 
       document.getElementById('stat-total').textContent = `${total}명`;
       document.getElementById('stat-eligible').textContent = `${eligible}명`;
       document.getElementById('stat-won').textContent = `${won}명`;
+      document.getElementById('stat-unclaimed').textContent = `미수령 ${unclaimed}개`;
       document.getElementById('stat-prizes-left').textContent = `${prizesLeft}개`;
     }
 
@@ -1531,6 +1536,7 @@
       if (target) {
         target.received = received;
         renderWinners();
+        renderStats();
       }
       try {
         const res = await callBackend('toggleWinnerReceived', { rowIndex, received });
@@ -1538,6 +1544,7 @@
           if (target) {
             target.received = prev;
             renderWinners();
+            renderStats();
           }
           return showToast('❌ ' + res.error);
         }
@@ -1546,6 +1553,7 @@
         if (target) {
           target.received = prev;
           renderWinners();
+          renderStats();
         }
         showToast('❌ ' + (err.message || '수령 상태 변경 실패'));
       }
