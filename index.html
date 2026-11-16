@@ -607,6 +607,7 @@
       </div>
       <div class="status-bar">
         <span id="conn-badge" class="badge demo">로컬 데모 모드</span>
+        <button id="sound-toggle-btn" class="btn btn-ghost btn-sm" onclick="toggleSound()">🔊 효과음 켜짐</button>
         <button class="btn btn-ghost btn-sm" onclick="openConfigModal()">⚙️ 구글시트 연결</button>
         <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
       </div>
@@ -849,6 +850,61 @@
     };
     let selectedPrizeRow = null;
     let isDrawing = false;
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function ensureAudio() {
+      if (!soundEnabled) return null;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('sound-toggle-btn');
+      btn.textContent = soundEnabled ? '🔊 효과음 켜짐' : '🔇 음소거';
+      if (soundEnabled) ensureAudio();
+    }
+
+    function playTone(freq, startOffset, duration, type = 'sine', volume = 0.18) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime + startOffset;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function playCountdownTick(num) {
+      if (!soundEnabled) return;
+      // 5~2는 경쾌한 틱음, 1은 한 옥타브 높은 긴장감 있는 톤
+      playTone(num === 1 ? 880 : 660, 0, 0.14, 'triangle', 0.22);
+    }
+
+    function playFanfare() {
+      if (!soundEnabled) return;
+      // 도-미-솔-도 팡파레 아르페지오 + 마지막 화음
+      const notes = [
+        [523.25, 0.00, 0.14],
+        [659.25, 0.11, 0.14],
+        [783.99, 0.22, 0.14],
+        [1046.50, 0.34, 0.55]
+      ];
+      notes.forEach(([freq, offset, dur]) => playTone(freq, offset, dur, 'triangle', 0.24));
+      playTone(523.25, 0.34, 0.55, 'sine', 0.12);
+      playTone(783.99, 0.34, 0.55, 'sine', 0.12);
+    }
 
     // 탭 전환
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1200,6 +1256,7 @@
 
     function openFullscreenDraw() {
       if (isDrawing) return;
+      ensureAudio();
       const prize = state.prizes.find(p => p.rowIndex === selectedPrizeRow);
       if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
 
@@ -1240,6 +1297,7 @@
 
     async function startDraw() {
       if (isDrawing) return;
+      ensureAudio();
       const prize = state.prizes.find(p => p.rowIndex === selectedPrizeRow);
       if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
 
@@ -1295,6 +1353,7 @@
       const countdownPromise = (async () => {
         for (let n = 5; n >= 1; n--) {
           renderCountdown(n);
+          playCountdownTick(n);
           await new Promise(r => setTimeout(r, 1000));
         }
       })();
@@ -1357,6 +1416,7 @@
               <div style="font-size:0.85rem; color:#6ee7b7; margin-top:8px;">총 ${picked.length}명 당첨! (다음 추첨에서 자동 제외됨)</div>
             `;
           }
+          playFanfare();
           launchConfetti();
         }
       } catch (err) {
