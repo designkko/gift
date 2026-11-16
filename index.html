@@ -807,9 +807,12 @@
         <label for="gas-url-input">Apps Script 웹 앱 URL (https://script.google.com/macros/s/.../exec)</label>
         <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
       </div>
-      <div style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn btn-ghost" onclick="closeModal('config-modal')">닫기</button>
-        <button class="btn btn-primary" onclick="saveGasUrl()">저장 및 연결</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="copyShareLink()">📱 핸드폰 연결 링크 복사</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost" onclick="closeModal('config-modal')">닫기</button>
+          <button class="btn btn-primary" onclick="saveGasUrl()">저장 및 연결</button>
+        </div>
       </div>
     </div>
   </div>
@@ -818,8 +821,22 @@
 
   <script>
     const IS_GAS_HOSTED = typeof google !== 'undefined' && google.script && google.script.run;
+    const DEFAULT_GAS_URL = '';
     const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
     const STORAGE_KEY_DEMO = 'raffle_demo_state_v1';
+
+    (function initApiFromQuery() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const apiParam = (params.get('api') || '').trim();
+        if (apiParam) {
+          localStorage.setItem(STORAGE_KEY_URL, apiParam);
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } catch (e) {}
+    })();
 
     let state = {
       participants: [],
@@ -840,7 +857,7 @@
     });
 
     function getGasUrl() {
-      return localStorage.getItem(STORAGE_KEY_URL) || '';
+      return localStorage.getItem(STORAGE_KEY_URL) || DEFAULT_GAS_URL || '';
     }
 
     function updateConnectionBadge(hasError = false) {
@@ -1543,6 +1560,18 @@
       document.getElementById('gas-url-input').value = getGasUrl();
       document.getElementById('config-modal').classList.add('open');
     }
+    async function copyShareLink() {
+      const url = (document.getElementById('gas-url-input').value || getGasUrl()).trim();
+      if (!url) return showToast('먼저 Apps Script 웹 앱 URL을 입력해주세요.');
+      const shareUrl = `${window.location.origin}${window.location.pathname}?api=${encodeURIComponent(url)}`;
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('📱 핸드폰 연결 링크가 복사되었습니다! 카톡 등으로 열어보세요.');
+      } catch (e) {
+        prompt('아래 링크를 복사해 핸드폰에서 여세요:', shareUrl);
+      }
+    }
+
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
     async function saveGasUrl() {
