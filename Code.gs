@@ -309,8 +309,11 @@ function addParticipant(name, phone) {
   lock.waitLock(10000);
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
-    if (!pSheet) setupSheets(true);
+    let pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
+    if (!pSheet) {
+      setupSheets(true);
+      pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
+    }
 
     // 중복 전화번호 체크
     const existing = getAllData().participants;

@@ -738,16 +738,19 @@
 
       const gasUrl = getGasUrl();
       if (gasUrl) {
-        if (action === 'getData') {
-          const res = await fetch(`${gasUrl}?action=getData`);
-          return await res.json();
+        const res = action === 'getData'
+          ? await fetch(`${gasUrl}?action=getData`)
+          : await fetch(gasUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ action, ...payload })
+            });
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (parseErr) {
+          throw new Error('구글시트 응답 오류: Apps Script 배포 시 액세스 권한을 "모든 사용자"로 설정했는지 확인해주세요.');
         }
-        const res = await fetch(gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, ...payload })
-        });
-        return await res.json();
       }
 
       // 로컬 데모 모드
@@ -1087,13 +1090,17 @@
       e.preventDefault();
       const nameEl = document.getElementById('input-name');
       const phoneEl = document.getElementById('input-phone');
-      const res = await callBackend('addParticipant', { name: nameEl.value, phone: phoneEl.value });
-      if (!res.ok) return showToast('❌ ' + res.error);
-      nameEl.value = '';
-      phoneEl.value = '';
-      nameEl.focus();
-      applyState(res);
-      showToast('✅ 참여자가 등록되었습니다.');
+      try {
+        const res = await callBackend('addParticipant', { name: nameEl.value, phone: phoneEl.value });
+        if (!res.ok) return showToast('❌ ' + res.error);
+        nameEl.value = '';
+        phoneEl.value = '';
+        nameEl.focus();
+        applyState(res);
+        showToast('✅ 참여자가 등록되었습니다.');
+      } catch (err) {
+        showToast('❌ ' + (err.message || '참여자 등록 중 오류가 발생했습니다.'));
+      }
     }
 
     async function handleBulkAdd() {
@@ -1105,12 +1112,16 @@
       }).filter(item => item.name && item.phone);
 
       if (list.length === 0) return showToast('형식에 맞는 데이터가 없습니다.');
-      const res = await callBackend('addParticipantsBulk', { list });
-      if (!res.ok) return showToast('❌ ' + res.error);
-      closeModal('bulk-modal');
-      document.getElementById('bulk-textarea').value = '';
-      applyState(res);
-      showToast(`✅ ${res.added}명 등록 완료 (중복/오류 ${res.skipped}명 제외)`);
+      try {
+        const res = await callBackend('addParticipantsBulk', { list });
+        if (!res.ok) return showToast('❌ ' + res.error);
+        closeModal('bulk-modal');
+        document.getElementById('bulk-textarea').value = '';
+        applyState(res);
+        showToast(`✅ ${res.added}명 등록 완료 (중복/오류 ${res.skipped}명 제외)`);
+      } catch (err) {
+        showToast('❌ ' + (err.message || '일괄 등록 중 오류가 발생했습니다.'));
+      }
     }
 
     async function handleDeleteParticipant(rowIndex) {
