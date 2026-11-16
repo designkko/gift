@@ -141,14 +141,15 @@ function setupSheets(silent) {
     prSheet = ss.insertSheet(SHEET_NAMES.PRIZES);
   }
   if (prSheet.getLastRow() === 0) {
-    const prHeaders = [['상품명', '총수량', '당첨수량', '남은수량', '비고']];
-    prSheet.getRange(1, 1, 1, 5).setValues(prHeaders);
-    styleHeader_(prSheet, 5, '#059669');
+    const prHeaders = [['상품명', '총수량', '당첨수량', '남은수량', '비고', '추첨인원']];
+    prSheet.getRange(1, 1, 1, 6).setValues(prHeaders);
+    styleHeader_(prSheet, 6, '#059669');
     prSheet.setColumnWidth(1, 200);
     prSheet.setColumnWidth(2, 90);
     prSheet.setColumnWidth(3, 90);
     prSheet.setColumnWidth(4, 90);
-    prSheet.setColumnWidth(5, 200);
+    prSheet.setColumnWidth(5, 180);
+    prSheet.setColumnWidth(6, 90);
     prSheet.setFrozenRows(1);
   }
 
@@ -260,20 +261,23 @@ function getAllData() {
 
   const prizes = [];
   if (prSheet.getLastRow() > 1) {
-    const rows = prSheet.getRange(2, 1, prSheet.getLastRow() - 1, 5).getValues();
+    const rows = prSheet.getRange(2, 1, prSheet.getLastRow() - 1, 6).getValues();
     rows.forEach((row, idx) => {
       const name = String(row[0] || '').trim();
       if (!name) return;
       const total = Math.max(0, Number(row[1]) || 0);
       const drawn = Math.max(0, Number(row[2]) || 0);
       const remaining = Math.max(0, total - drawn);
+      const rawDrawCount = Number(row[5]);
+      const drawCount = rawDrawCount > 0 ? rawDrawCount : (remaining > 0 ? remaining : 1);
       prizes.push({
         rowIndex: idx + 2,
         name: name,
         total: total,
         drawn: drawn,
         remaining: remaining,
-        note: String(row[4] || '').trim()
+        note: String(row[4] || '').trim(),
+        drawCount: drawCount
       });
     });
   }
@@ -418,7 +422,10 @@ function savePrizes(prizes) {
     const prSheet = ss.getSheetByName(SHEET_NAMES.PRIZES);
     const lastRow = prSheet.getLastRow();
     if (lastRow > 1) {
-      prSheet.getRange(2, 1, lastRow - 1, 5).clearContent();
+      prSheet.getRange(2, 1, lastRow - 1, 6).clearContent();
+    }
+    if (!prSheet.getRange(1, 6).getValue()) {
+      prSheet.getRange(1, 6).setValue('추첨인원');
     }
 
     if (Array.isArray(prizes) && prizes.length > 0) {
@@ -426,17 +433,19 @@ function savePrizes(prizes) {
         const r = idx + 2;
         const total = Math.max(0, Number(p.total) || 0);
         const drawn = Math.max(0, Math.min(total, Number(p.drawn) || 0));
+        const drawCount = Math.max(1, Number(p.drawCount) || (total - drawn) || 1);
         return [
           String(p.name || '').trim(),
           total,
           drawn,
           `=B${r}-C${r}`,
-          String(p.note || '').trim()
+          String(p.note || '').trim(),
+          drawCount
         ];
       }).filter(r => r[0] !== '');
 
       if (rows.length > 0) {
-        prSheet.getRange(2, 1, rows.length, 5).setValues(rows);
+        prSheet.getRange(2, 1, rows.length, 6).setValues(rows);
       }
     }
 
