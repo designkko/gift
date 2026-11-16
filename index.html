@@ -825,7 +825,7 @@
       prizes: [],
       winners: []
     };
-    let selectedPrizeName = null;
+    let selectedPrizeRow = null;
     let isDrawing = false;
 
     // 탭 전환
@@ -879,7 +879,7 @@
             case 'addParticipantsBulk': runner.addParticipantsBulk(payload.list); break;
             case 'deleteParticipant': runner.deleteParticipant(payload.rowIndex); break;
             case 'savePrizes': runner.savePrizes(payload.prizes); break;
-            case 'drawWinners': runner.drawWinners(payload.prizeName, payload.count); break;
+            case 'drawWinners': runner.drawWinners(payload.prizeName, payload.count, payload.prizeRowIndex); break;
             case 'cancelWinner': runner.cancelWinner(payload.rowIndex); break;
             case 'resetAllDraws': runner.resetAllDraws(); break;
             default: reject(new Error('지원하지 않는 작업: ' + action));
@@ -1008,7 +1008,9 @@
         return { ok: true, data: db };
       }
       if (action === 'drawWinners') {
-        const prize = db.prizes.find(p => p.name === payload.prizeName);
+        const prize = (payload.prizeRowIndex != null
+          ? db.prizes.find(p => p.rowIndex === payload.prizeRowIndex)
+          : null) || db.prizes.find(p => p.name === payload.prizeName);
         if (!prize) return { ok: false, error: '상품을 찾을 수 없습니다.' };
         if (prize.remaining <= 0) return { ok: false, error: '남은 수량이 없습니다.' };
         const count = Math.min(Math.max(1, Number(payload.count) || 1), prize.remaining);
@@ -1076,9 +1078,9 @@
       state.participants = payload.participants || [];
       state.prizes = payload.prizes || [];
       state.winners = payload.winners || [];
-      if (!selectedPrizeName || !state.prizes.some(p => p.name === selectedPrizeName)) {
+      if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
         const firstAvail = state.prizes.find(p => p.remaining > 0) || state.prizes[0];
-        selectedPrizeName = firstAvail ? firstAvail.name : null;
+        selectedPrizeRow = firstAvail ? firstAvail.rowIndex : null;
       }
       renderAll();
     }
@@ -1113,7 +1115,7 @@
         state.prizes.forEach(prize => {
           const btn = document.createElement('button');
           const exhausted = prize.remaining <= 0;
-          btn.className = `prize-item ${selectedPrizeName === prize.name ? 'selected' : ''} ${exhausted ? 'exhausted' : ''}`;
+          btn.className = `prize-item ${selectedPrizeRow === prize.rowIndex ? 'selected' : ''} ${exhausted ? 'exhausted' : ''}`;
           btn.innerHTML = `
             <div class="prize-item-top">
               <span>${escapeHtml(prize.name)}</span>
@@ -1123,14 +1125,14 @@
           `;
           btn.onclick = () => {
             if (isDrawing) return;
-            selectedPrizeName = prize.name;
+            selectedPrizeRow = prize.rowIndex;
             renderDrawSection();
           };
           listEl.appendChild(btn);
         });
       }
 
-      const currentPrize = state.prizes.find(p => p.name === selectedPrizeName);
+      const currentPrize = state.prizes.find(p => p.rowIndex === selectedPrizeRow);
       const labelEl = document.getElementById('stage-prize-label');
       const drawBtn = document.getElementById('btn-draw');
       const countInput = document.getElementById('draw-count');
@@ -1158,7 +1160,7 @@
 
     function openFullscreenDraw() {
       if (isDrawing) return;
-      const prize = state.prizes.find(p => p.name === selectedPrizeName);
+      const prize = state.prizes.find(p => p.rowIndex === selectedPrizeRow);
       if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
 
       const countEl = document.getElementById('draw-count');
@@ -1198,7 +1200,7 @@
 
     async function startDraw() {
       if (isDrawing) return;
-      const prize = state.prizes.find(p => p.name === selectedPrizeName);
+      const prize = state.prizes.find(p => p.rowIndex === selectedPrizeRow);
       if (!prize || prize.remaining <= 0) return showToast('남은 수량이 없는 상품입니다.');
 
       const countEl = document.getElementById('draw-count');
@@ -1259,7 +1261,7 @@
 
       try {
         const [res] = await Promise.all([
-          callBackend('drawWinners', { prizeName: prize.name, count: reqCount }),
+          callBackend('drawWinners', { prizeName: prize.name, prizeRowIndex: prize.rowIndex, count: reqCount }),
           countdownPromise
         ]);
         clearInterval(animTimer);

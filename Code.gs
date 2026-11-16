@@ -63,7 +63,7 @@ function doPost(e) {
         result = savePrizes(body.prizes || []);
         break;
       case 'drawWinners':
-        result = drawWinners(body.prizeName, body.count || 1);
+        result = drawWinners(body.prizeName, body.count || 1, body.prizeRowIndex);
         break;
       case 'cancelWinner':
         result = cancelWinner(body.rowIndex);
@@ -449,7 +449,7 @@ function savePrizes(prizes) {
 /**
  * 추첨 실행 (당첨자는 자동으로 참여자 목록에서 제외됨)
  */
-function drawWinners(prizeName, count) {
+function drawWinners(prizeName, count, prizeRowIndex) {
   const drawCount = Math.max(1, Number(count) || 1);
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -460,7 +460,9 @@ function drawWinners(prizeName, count) {
     const wSheet = ss.getSheetByName(SHEET_NAMES.WINNERS);
 
     const data = getAllData();
-    const prize = data.prizes.find(p => p.name === prizeName);
+    const prize = (prizeRowIndex != null
+      ? data.prizes.find(p => p.rowIndex === Number(prizeRowIndex))
+      : null) || data.prizes.find(p => p.name === prizeName);
     if (!prize) {
       return { ok: false, error: '선택한 상품을 찾을 수 없습니다.' };
     }
