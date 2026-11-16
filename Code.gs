@@ -573,7 +573,7 @@ function toggleWinnerReceived(winnerRowIndex, received) {
       wSheet.getRange(1, 5).setValue('선물수령');
     }
     if (winnerRowIndex >= 2 && winnerRowIndex <= wSheet.getLastRow()) {
-      wSheet.getRange(winnerRowIndex, 5).setValue(received ? '수령완료' : '미수령');
+      wSheet.getRange(winnerRowIndex, 5).setValue(received ? '수령' : '미수령');
     }
     return { ok: true, data: getAllData() };
   } finally {

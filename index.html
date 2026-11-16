@@ -1513,10 +1513,13 @@
           <td>${escapeHtml(displayName(w.name))}</td>
           <td style="font-variant-numeric:tabular-nums;">${escapeHtml(displayPhone(w.phone))}</td>
           <td>
-            <label class="toggle-label" style="color:${w.received ? '#6ee7b7' : 'var(--text-muted)'}; font-weight:600;">
-              <input type="checkbox" ${w.received ? 'checked' : ''} onchange="handleToggleReceived(${w.rowIndex}, this.checked)" />
-              ${w.received ? '수령완료' : '미수령'}
-            </label>
+            <button
+              class="btn btn-sm ${w.received ? 'btn-success' : 'btn-ghost'}"
+              style="min-width:74px;"
+              onclick="handleToggleReceived(${w.rowIndex}, ${!w.received})"
+            >
+              ${w.received ? '수령' : '미수령'}
+            </button>
           </td>
         </tr>
       `).join('');
@@ -1527,7 +1530,7 @@
         const res = await callBackend('toggleWinnerReceived', { rowIndex, received });
         if (!res.ok) return showToast('❌ ' + res.error);
         applyState(res);
-        showToast(received ? '✅ 선물 수령 확인되었습니다.' : '미수령으로 변경되었습니다.');
+        showToast(received ? '✅ 선물 수령으로 변경되었습니다.' : '미수령으로 변경되었습니다.');
       } catch (err) {
         showToast('❌ ' + (err.message || '수령 상태 변경 실패'));
       }
@@ -1555,7 +1558,7 @@
         w.prize,
         w.name,
         w.phone,
-        w.received ? '수령완료' : '미수령'
+        w.received ? '수령' : '미수령'
       ]);
       const csv = '\uFEFF' + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
