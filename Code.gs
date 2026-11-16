@@ -575,7 +575,7 @@ function toggleWinnerReceived(winnerRowIndex, received) {
     if (winnerRowIndex >= 2 && winnerRowIndex <= wSheet.getLastRow()) {
       wSheet.getRange(winnerRowIndex, 5).setValue(received ? '수령' : '미수령');
     }
-    return { ok: true, data: getAllData() };
+    return { ok: true, rowIndex: winnerRowIndex, received: !!received };
   } finally {
     lock.releaseLock();
   }

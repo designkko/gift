@@ -1526,12 +1526,27 @@
     }
 
     async function handleToggleReceived(rowIndex, received) {
+      const target = state.winners.find(w => w.rowIndex === rowIndex);
+      const prev = target ? target.received : !received;
+      if (target) {
+        target.received = received;
+        renderWinners();
+      }
       try {
         const res = await callBackend('toggleWinnerReceived', { rowIndex, received });
-        if (!res.ok) return showToast('❌ ' + res.error);
-        applyState(res);
-        showToast(received ? '✅ 선물 수령으로 변경되었습니다.' : '미수령으로 변경되었습니다.');
+        if (!res.ok) {
+          if (target) {
+            target.received = prev;
+            renderWinners();
+          }
+          return showToast('❌ ' + res.error);
+        }
+        if (res.data) applyState(res);
       } catch (err) {
+        if (target) {
+          target.received = prev;
+          renderWinners();
+        }
         showToast('❌ ' + (err.message || '수령 상태 변경 실패'));
       }
     }
