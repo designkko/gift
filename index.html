@@ -1576,7 +1576,10 @@
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">아직 당첨 기록이 없습니다.</td></tr>';
         return;
       }
-      tbody.innerHTML = state.winners.map(w => `
+      const sorted = state.winners.slice().sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''), 'ko')
+      );
+      tbody.innerHTML = sorted.map(w => `
         <tr>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
