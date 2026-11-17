@@ -213,16 +213,12 @@
 <body>
   <div class="toolbar">
     <div class="toolbar-top">
-      <div style="font-weight:800; font-size:1.05rem;">📱 참여자 등록 QR코드 안내지</div>
+      <div style="font-weight:800; font-size:1.05rem;">📱 참여자 등록 QR코드 안내</div>
       <div class="toolbar-actions">
         <a class="btn btn-ghost" href="register.html" target="_blank">📝 등록 페이지 열기</a>
         <button id="pdf-btn" class="btn btn-primary" onclick="downloadPdf()">⬇️ PDF 다운로드</button>
         <button class="btn" onclick="window.print()">🖨️ 인쇄</button>
       </div>
-    </div>
-    <div class="url-row">
-      <input id="qr-url-input" type="url" placeholder="등록 페이지 URL" />
-      <button class="btn" onclick="updateQr()">QR 갱신</button>
     </div>
   </div>
 
@@ -296,7 +292,6 @@
       }
     }
 
-    document.getElementById('qr-url-input').value = DEFAULT_REGISTER_URL;
     renderQr(DEFAULT_REGISTER_URL);
   </script>
 </body>
