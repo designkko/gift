@@ -211,17 +211,6 @@
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <div class="toolbar-top">
-      <div style="font-weight:800; font-size:1.05rem;">📱 참여자 등록 QR코드 안내</div>
-      <div class="toolbar-actions">
-        <a class="btn btn-ghost" href="register.html">📝 등록 페이지 열기</a>
-        <button id="pdf-btn" class="btn btn-primary" onclick="downloadPdf()">⬇️ PDF 다운로드</button>
-        <button class="btn" onclick="window.print()">🖨️ 인쇄</button>
-      </div>
-    </div>
-  </div>
-
   <div class="poster-wrap">
     <div id="poster-area" class="poster">
       <div class="poster-badge">🎄 2026 내일교회 성탄 행사</div>
@@ -241,6 +230,14 @@
       </div>
 
       <div class="poster-url" id="poster-url-text"></div>
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-top:20px; margin-bottom:0;">
+    <div class="toolbar-actions" style="justify-content:center;">
+      <a class="btn btn-ghost" href="register.html">📝 등록 페이지 열기</a>
+      <button id="pdf-btn" class="btn btn-primary" onclick="downloadPdf()">⬇️ PDF 다운로드</button>
+      <button class="btn" onclick="window.print()">🖨️ 인쇄</button>
     </div>
   </div>
 
