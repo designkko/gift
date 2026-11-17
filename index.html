@@ -384,6 +384,21 @@
       overflow-x: auto;
     }
 
+    @media (max-width: 640px) {
+      .winners-table th, .winners-table td {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+      }
+      .winners-table th:first-child,
+      .winners-table td:first-child {
+        display: none;
+      }
+      .winners-table .btn-sm {
+        padding: 4px 7px;
+        font-size: 0.75rem;
+      }
+    }
+
     .pill-status {
       display: inline-block;
       padding: 3px 9px;
@@ -780,7 +795,7 @@
           </div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="winners-table">
             <thead>
               <tr>
                 <th>당첨 일시</th>
