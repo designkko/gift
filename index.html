@@ -771,7 +771,8 @@
       <div class="card">
         <div class="card-title">
           <span>당첨 기록</span>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input id="search-winner" type="text" placeholder="전화번호 / 이름 검색" oninput="renderWinners()" style="width:190px; padding:6px 10px; font-size:0.84rem;" />
             <button class="btn btn-ghost btn-sm" onclick="downloadWinnersCsv()">⬇️ CSV 내보내기</button>
             <button class="btn btn-danger btn-sm" onclick="confirmResetAll()">🗑️ 당첨 전체 초기화</button>
           </div>
@@ -1605,13 +1606,25 @@
         phoneInd.style.opacity = winnersSortKey === 'phone' ? '1' : '0.45';
       }
 
+      const query = (document.getElementById('search-winner')?.value || '').trim().toLowerCase();
+      const queryDigits = query.replace(/\D/g, '');
+      const filtered = state.winners.filter(w => {
+        if (!query) return true;
+        const phoneStr = String(w.phone || '').toLowerCase();
+        const phoneDigits = phoneStr.replace(/\D/g, '');
+        const nameStr = String(w.name || '').toLowerCase();
+        return phoneStr.includes(query)
+          || (queryDigits && phoneDigits.includes(queryDigits))
+          || nameStr.includes(query);
+      });
+
       const tbody = document.getElementById('winners-tbody');
-      if (state.winners.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">아직 당첨 기록이 없습니다.</td></tr>';
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">${state.winners.length === 0 ? '아직 당첨 기록이 없습니다.' : '검색 결과가 없습니다.'}</td></tr>`;
         return;
       }
       const dir = winnersSortAsc ? 1 : -1;
-      const sorted = state.winners.slice().sort((a, b) => {
+      const sorted = filtered.slice().sort((a, b) => {
         if (winnersSortKey === 'phone') {
           const aLast = String(a.phone || '').replace(/\D/g, '').slice(-4);
           const bLast = String(b.phone || '').replace(/\D/g, '').slice(-4);
