@@ -940,34 +940,6 @@
       gain.connect(ctx.destination);
     }
 
-    function playCymbalHit(startOffset, duration = 0.7, volume = 0.08) {
-      const ctx = ensureAudio();
-      if (!ctx) return;
-      const now = ctx.currentTime + startOffset;
-      const bufferSize = Math.floor(ctx.sampleRate * duration);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.setValueAtTime(3500, now);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(volume, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-      noise.connect(hp);
-      hp.connect(gain);
-      gain.connect(ctx.destination);
-      noise.start(now);
-      noise.stop(now + duration + 0.02);
-    }
-
     function playFanfare() {
       if (!soundEnabled) return;
       // 웅장한 브라스 빵빠레: 빠-빠-빠-빠아아앙~!!
@@ -977,13 +949,12 @@
       playBrassNote(659.25, 0.42, 0.16, 0.18); // E5
       playBrassNote(587.33, 0.58, 0.14, 0.16); // D5
       playBrassNote(659.25, 0.72, 0.14, 0.18); // E5
-      // 피날레 화음 (C5 + E5 + G5 + C6 + 심벌)
+      // 피날레 화음 (C5 + E5 + G5 + C6)
       playBrassNote(261.63, 0.88, 1.05, 0.14); // C4 베이스
       playBrassNote(523.25, 0.88, 1.05, 0.16); // C5
       playBrassNote(659.25, 0.88, 1.05, 0.16); // E5
       playBrassNote(783.99, 0.88, 1.05, 0.16); // G5
       playBrassNote(1046.50, 0.88, 1.05, 0.18); // C6
-      playCymbalHit(0.88, 0.85, 0.09);
     }
 
     // 탭 전환
