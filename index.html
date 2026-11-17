@@ -389,8 +389,8 @@
         padding: 8px 6px;
         font-size: 0.8rem;
       }
-      .winners-table th:first-child,
-      .winners-table td:first-child {
+      .winners-table th:nth-child(2),
+      .winners-table td:nth-child(2) {
         display: none;
       }
       .winners-table .btn-sm {
@@ -798,6 +798,7 @@
           <table class="winners-table">
             <thead>
               <tr>
+                <th style="width:44px;">#</th>
                 <th>당첨 일시</th>
                 <th>상품명</th>
                 <th>이름</th>
@@ -1646,11 +1647,12 @@
 
       const tbody = document.getElementById('winners-tbody');
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">${state.winners.length === 0 ? '아직 당첨 기록이 없습니다.' : '검색 결과가 없습니다.'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:24px;">${state.winners.length === 0 ? '아직 당첨 기록이 없습니다.' : '검색 결과가 없습니다.'}</td></tr>`;
         return;
       }
-      tbody.innerHTML = filtered.map(w => `
+      tbody.innerHTML = filtered.map((w, idx) => `
         <tr>
+          <td style="color:var(--text-muted);">${w.rowIndex && w.rowIndex < 100000 ? w.rowIndex - 1 : idx + 1}</td>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
           <td>${escapeHtml(displayName(w.name))}</td>
