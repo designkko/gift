@@ -789,8 +789,6 @@
           <span>당첨 기록</span>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <input id="search-winner" type="text" placeholder="전화번호 / 이름 검색" oninput="renderWinners()" style="width:180px; padding:6px 10px; font-size:0.84rem;" />
-            <button class="btn btn-ghost btn-sm" onclick="copyUnclaimedPhones()">📋 미수령자 번호 복사</button>
-            <button class="btn btn-ghost btn-sm" onclick="openGroupSms()">📩 미수령자 단체문자</button>
             <button class="btn btn-primary btn-sm" onclick="sendAllSmsViaApi()">🚀 API 일괄발송</button>
             <button class="btn btn-ghost btn-sm" onclick="openSmsConfigModal()">📲 문자 API 설정</button>
             <a class="btn btn-ghost btn-sm" href="winners.html" target="_blank" style="text-decoration:none;">🏆 전용 페이지</a>
@@ -1735,28 +1733,6 @@
       const msg = `[2026 내일교회 성탄 선물 추첨]\n${w.name}님, '${w.prize}' 당첨을 축하드립니다!\n당첨확인 문자를 가지고 선물수령처에 오셔서 수령하세요.`;
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       return `sms:${phoneDigits}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
-    }
-
-    async function copyUnclaimedPhones() {
-      const targets = state.winners.filter(w => !w.received && w.phone);
-      if (targets.length === 0) return showToast('복사할 미수령 당첨자가 없습니다.');
-      const phones = targets.map(w => w.phone).join(', ');
-      try {
-        await navigator.clipboard.writeText(phones);
-        showToast(`📋 미수령자 ${targets.length}명의 전화번호가 복사되었습니다!`);
-      } catch (e) {
-        prompt('아래 번호를 복사하세요:', phones);
-      }
-    }
-
-    function openGroupSms() {
-      const targets = state.winners.filter(w => !w.received && w.phone);
-      if (targets.length === 0) return showToast('발송할 미수령 당첨자가 없습니다.');
-      const phones = targets.map(w => String(w.phone || '').replace(/\D/g, '')).filter(Boolean);
-      const uniquePhones = Array.from(new Set(phones)).join(',');
-      const msg = `[2026 내일교회 성탄 선물 추첨]\n선물 당첨을 축하드립니다!\n당첨확인 문자를 가지고 선물수령처에 오셔서 수령하세요.`;
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      window.location.href = `sms:${uniquePhones}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
     }
 
     function toggleSmsFields() {
