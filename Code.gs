@@ -138,7 +138,7 @@ function setupSheets(silent) {
     prSheet = ss.insertSheet(SHEET_NAMES.PRIZES);
   }
   if (prSheet.getLastRow() === 0) {
-    const prHeaders = [['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '순서']];
+    const prHeaders = [['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '비고']];
     prSheet.getRange(1, 1, 1, 6).setValues(prHeaders);
     styleHeader_(prSheet, 6, '#059669');
     prSheet.setColumnWidth(1, 200);
@@ -146,7 +146,7 @@ function setupSheets(silent) {
     prSheet.setColumnWidth(3, 90);
     prSheet.setColumnWidth(4, 90);
     prSheet.setColumnWidth(5, 90);
-    prSheet.setColumnWidth(6, 120);
+    prSheet.setColumnWidth(6, 200);
     prSheet.setFrozenRows(1);
   }
 
@@ -445,7 +445,7 @@ function savePrizes(prizes) {
     if (lastRow > 1) {
       prSheet.getRange(2, 1, lastRow - 1, 6).clearContent();
     }
-    prSheet.getRange(1, 1, 1, 6).setValues([['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '순서']]);
+    prSheet.getRange(1, 1, 1, 6).setValues([['상품명', '총수량', '추첨인원', '당첨수량', '남은수량', '비고']]);
 
     if (Array.isArray(prizes) && prizes.length > 0) {
       const rows = prizes.map((p, idx) => {
