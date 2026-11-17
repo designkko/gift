@@ -626,6 +626,7 @@
         <a class="btn btn-ghost btn-sm" href="winners.html" target="_blank" style="text-decoration:none;">🏆 당첨 기록 페이지</a>
         <button id="sound-toggle-btn" class="btn btn-ghost btn-sm" onclick="toggleSound()">🔊 효과음 켜짐</button>
         <button class="btn btn-ghost btn-sm" onclick="openConfigModal()">⚙️ 구글시트 연결</button>
+        <button class="btn btn-ghost btn-sm" onclick="openSmsConfigModal()">📲 문자 API 설정</button>
         <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
         <span id="conn-badge" class="badge demo">로컬 데모 모드</span>
       </div>
@@ -789,8 +790,6 @@
           <span>당첨 기록</span>
           <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <input id="search-winner" type="text" placeholder="전화번호 / 이름 검색" oninput="renderWinners()" style="width:180px; padding:6px 10px; font-size:0.84rem;" />
-            <button class="btn btn-primary btn-sm" onclick="sendAllSmsViaApi()">🚀 API 일괄발송</button>
-            <button class="btn btn-ghost btn-sm" onclick="openSmsConfigModal()">📲 문자 API 설정</button>
             <button class="btn btn-ghost btn-sm" onclick="downloadWinnersCsv()">⬇️ CSV 내보내기</button>
             <button class="btn btn-danger btn-sm" onclick="confirmResetAll()">🗑️ 당첨 전체 초기화</button>
           </div>
