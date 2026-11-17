@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎄 2026 내일교회 성탄 선물 추첨 - 당첨 기록</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-2: #273449;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --success: #10b981;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: radial-gradient(circle at top, #1e1b4b 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 24px 16px 60px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .brand h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .badge.live { border-color: rgba(16, 185, 129, 0.5); color: #34d399; }
+    .badge.err { border-color: rgba(239, 68, 68, 0.6); color: #fca5a5; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      background: var(--surface-2);
+      transition: 0.15s ease;
+    }
+
+    .btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: #052e16; }
+    .btn-ghost { background: transparent; border-color: var(--border); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; border-radius: 8px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat-card {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+    .stat-value { font-size: 1.5rem; font-weight: 800; margin-top: 2px; }
+
+    .card {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input {
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: inherit;
+    }
+
+    input:focus { outline: none; border-color: var(--primary); }
+
+    .toggle-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      background: #1e293b;
+      border: 1px solid var(--primary);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>🏆 2026 내일교회 성탄 선물 당첨 기록</h1>
+        <p>당첨자 확인 및 선물 수령 상태를 관리할 수 있습니다.</p>
+      </div>
+      <div class="status-bar">
+        <span id="conn-badge" class="badge live">🟢 구글시트 연결 중...</span>
+        <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
+      </div>
+    </header>
+
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">총 당첨 인원</div>
+        <div class="stat-value" id="stat-total-won" style="color:#818cf8;">0명</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">수령 완료</div>
+        <div class="stat-value" id="stat-received" style="color:#34d399;">0개</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">미수령</div>
+        <div class="stat-value" id="stat-unclaimed" style="color:#f87171;">0개</div>
+      </div>
+    </section>
+
+    <div class="card">
+      <div class="card-title">
+        <span>당첨 기록</span>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label class="toggle-label">
+            <input type="checkbox" id="mask-toggle" checked onchange="renderWinners()" />
+            이름·번호 가리기
+          </label>
+          <input id="search-winner" type="text" placeholder="전화번호 / 이름 검색" oninput="renderWinners()" style="width:190px;" />
+          <button class="btn btn-ghost btn-sm" onclick="downloadWinnersCsv()">⬇️ CSV 내보내기</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>당첨 일시</th>
+              <th>상품명</th>
+              <th>이름</th>
+              <th>전화번호</th>
+              <th style="width:110px;">선물 수령</th>
+            </tr>
+          </thead>
+          <tbody id="winners-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
+    const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
+    let runtimeGasUrl = '';
+    let winners = [];
+
+    function safeGet(key) {
+      try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+    }
+
+    (function initApi() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const apiParam = (params.get('api') || '').trim();
+        if (apiParam) {
+          runtimeGasUrl = apiParam;
+          try { localStorage.setItem(STORAGE_KEY_URL, apiParam); } catch (e) {}
+        }
+      } catch (e) {}
+    })();
+
+    function getGasUrl() {
+      return runtimeGasUrl || safeGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL;
+    }
+
+    async function callGas(action, payload = {}) {
+      const url = getGasUrl();
+      const res = action === 'getData'
+        ? await fetch(`${url}?action=getData`)
+        : await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, ...payload })
+          });
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error('구글시트 응답을 해석할 수 없습니다.');
+      }
+    }
+
+    async function refreshData() {
+      const badge = document.getElementById('conn-badge');
+      try {
+        const res = await callGas('getData');
+        if (!res.ok) throw new Error(res.error);
+        winners = res.winners || [];
+        badge.textContent = '🟢 구글시트 연동됨';
+        badge.className = 'badge live';
+        renderStats();
+        renderWinners();
+      } catch (err) {
+        badge.textContent = '🔴 연결 오류';
+        badge.className = 'badge err';
+        showToast('❌ 불러오기 실패: ' + err.message);
+      }
+    }
+
+    function renderStats() {
+      const total = winners.length;
+      const received = winners.filter(w => w.received).length;
+      const unclaimed = total - received;
+      document.getElementById('stat-total-won').textContent = `${total}명`;
+      document.getElementById('stat-received').textContent = `${received}개`;
+      document.getElementById('stat-unclaimed').textContent = `${unclaimed}개`;
+    }
+
+    function renderWinners() {
+      const query = (document.getElementById('search-winner').value || '').trim().toLowerCase();
+      const queryDigits = query.replace(/\D/g, '');
+      const filtered = winners.filter(w => {
+        if (!query) return true;
+        const phoneStr = String(w.phone || '').toLowerCase();
+        const phoneDigits = phoneStr.replace(/\D/g, '');
+        const nameStr = String(w.name || '').toLowerCase();
+        return phoneStr.includes(query)
+          || (queryDigits && phoneDigits.includes(queryDigits))
+          || nameStr.includes(query);
+      });
+
+      const tbody = document.getElementById('winners-tbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">${winners.length === 0 ? '아직 당첨 기록이 없습니다.' : '검색 결과가 없습니다.'}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(w => `
+        <tr>
+          <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
+          <td><strong>${escapeHtml(w.prize)}</strong></td>
+          <td>${escapeHtml(displayName(w.name))}</td>
+          <td style="font-variant-numeric:tabular-nums;">${escapeHtml(displayPhone(w.phone))}</td>
+          <td>
+            <button
+              class="btn btn-sm ${w.received ? 'btn-success' : 'btn-ghost'}"
+              style="min-width:74px;"
+              onclick="handleToggleReceived(${w.rowIndex}, ${!w.received})"
+            >
+              ${w.received ? '수령' : '미수령'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function handleToggleReceived(rowIndex, received) {
+      const target = winners.find(w => w.rowIndex === rowIndex);
+      const prev = target ? target.received : !received;
+      if (target) {
+        target.received = received;
+        renderWinners();
+        renderStats();
+      }
+      try {
+        const res = await callGas('toggleWinnerReceived', { rowIndex, received });
+        if (!res.ok) {
+          if (target) {
+            target.received = prev;
+            renderWinners();
+            renderStats();
+          }
+          return showToast('❌ ' + res.error);
+        }
+      } catch (err) {
+        if (target) {
+          target.received = prev;
+          renderWinners();
+          renderStats();
+        }
+        showToast('❌ ' + (err.message || '수령 상태 변경 실패'));
+      }
+    }
+
+    function downloadWinnersCsv() {
+      if (winners.length === 0) return showToast('내보낼 당첨 기록이 없습니다.');
+      const header = ['순서', '당첨일시', '상품명', '이름', '전화번호', '선물수령'];
+      const ordered = winners.slice().reverse().sort((a, b) => Number(!!b.received) - Number(!!a.received));
+      const rows = ordered.map((w, idx) => [
+        idx + 1,
+        w.wonAt,
+        w.prize,
+        w.name,
+        w.phone,
+        w.received ? '수령' : '미수령'
+      ]);
+      const csv = '\uFEFF' + [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `당첨기록_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    }
+
+    function displayName(name) {
+      const mask = document.getElementById('mask-toggle').checked;
+      const s = String(name || '').trim();
+      if (!mask || s.length <= 1) return s;
+      if (s.length === 2) return s[0] + '*';
+      return s[0] + '*'.repeat(s.length - 2) + s[s.length - 1];
+    }
+
+    function displayPhone(phone) {
+      const mask = document.getElementById('mask-toggle').checked;
+      if (!mask || !phone) return phone || '';
+      const parts = phone.split('-');
+      if (parts.length === 3) return `${parts[0]}-****-${parts[2]}`;
+      return phone.length > 4 ? '*'.repeat(phone.length - 4) + phone.slice(-4) : phone;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[s]));
+    }
+
+    refreshData();
+  </script>
+</body>
+</html>
