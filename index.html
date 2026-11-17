@@ -783,8 +783,8 @@
               <tr>
                 <th>당첨 일시</th>
                 <th>상품명</th>
-                <th style="cursor:pointer; user-select:none;" onclick="setWinnersSort('name')">이름 <span id="sort-ind-name">▲</span></th>
-                <th style="cursor:pointer; user-select:none;" onclick="setWinnersSort('phone')">전화번호 <span id="sort-ind-phone" style="opacity:0.45;">↕</span></th>
+                <th>이름</th>
+                <th>전화번호</th>
                 <th style="width:120px;">선물 수령</th>
               </tr>
             </thead>
@@ -1583,29 +1583,7 @@
       showToast('✅ 상품 및 수량 설정이 저장되었습니다.');
     }
 
-    let winnersSortKey = 'name';
-    let winnersSortAsc = true;
-
-    function setWinnersSort(key) {
-      if (winnersSortKey === key) {
-        winnersSortAsc = !winnersSortAsc;
-      } else {
-        winnersSortKey = key;
-        winnersSortAsc = true;
-      }
-      renderWinners();
-    }
-
     function renderWinners() {
-      const nameInd = document.getElementById('sort-ind-name');
-      const phoneInd = document.getElementById('sort-ind-phone');
-      if (nameInd && phoneInd) {
-        nameInd.textContent = winnersSortKey === 'name' ? (winnersSortAsc ? '▲' : '▼') : '↕';
-        nameInd.style.opacity = winnersSortKey === 'name' ? '1' : '0.45';
-        phoneInd.textContent = winnersSortKey === 'phone' ? (winnersSortAsc ? '▲' : '▼') : '↕';
-        phoneInd.style.opacity = winnersSortKey === 'phone' ? '1' : '0.45';
-      }
-
       const query = (document.getElementById('search-winner')?.value || '').trim().toLowerCase();
       const queryDigits = query.replace(/\D/g, '');
       const filtered = state.winners.filter(w => {
@@ -1623,17 +1601,7 @@
         tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:24px;">${state.winners.length === 0 ? '아직 당첨 기록이 없습니다.' : '검색 결과가 없습니다.'}</td></tr>`;
         return;
       }
-      const dir = winnersSortAsc ? 1 : -1;
-      const sorted = filtered.slice().sort((a, b) => {
-        if (winnersSortKey === 'phone') {
-          const aLast = String(a.phone || '').replace(/\D/g, '').slice(-4);
-          const bLast = String(b.phone || '').replace(/\D/g, '').slice(-4);
-          const cmp = aLast.localeCompare(bLast, 'ko');
-          if (cmp !== 0) return cmp * dir;
-        }
-        return String(a.name || '').localeCompare(String(b.name || ''), 'ko') * dir;
-      });
-      tbody.innerHTML = sorted.map(w => `
+      tbody.innerHTML = filtered.map(w => `
         <tr>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
@@ -1696,7 +1664,7 @@
     function downloadWinnersCsv() {
       if (state.winners.length === 0) return showToast('내보낼 당첨 기록이 없습니다.');
       const header = ['순서', '당첨일시', '상품명', '이름', '전화번호', '선물수령'];
-      const ordered = state.winners.slice().reverse();
+      const ordered = state.winners.slice().reverse().sort((a, b) => Number(!!b.received) - Number(!!a.received));
       const rows = ordered.map((w, idx) => [
         idx + 1,
         w.wonAt,
