@@ -213,8 +213,8 @@
 <body>
   <div class="poster-wrap">
     <div id="poster-area" class="poster">
-      <div id="poster-badge" class="poster-badge">🎄 2026 내일교회 성탄 행사</div>
-      <h1>성탄 선물 추첨<br/>참여 등록 안내</h1>
+      <div id="poster-badge" class="poster-badge">📱 QR코드 안내</div>
+      <h1 id="poster-title">🎄 2026 내일교회 성탄 선물 추첨<br/>참여 등록 안내</h1>
       <p class="poster-sub">
         스마트폰 카메라로 아래 QR코드를 스캔한 뒤<br/>
         <strong>이름</strong>과 <strong>전화번호</strong>를 입력해 주세요!
@@ -265,9 +265,14 @@
     function applyAppTitle(title) {
       const clean = String(title || '').trim();
       if (!clean) return;
-      document.title = `${clean} - QR코드 안내지`;
-      const badge = document.getElementById('poster-badge');
-      if (badge) badge.textContent = clean;
+      document.title = `${clean} - 참여 등록 안내`;
+      const h1 = document.getElementById('poster-title');
+      if (h1) {
+        h1.textContent = '';
+        h1.appendChild(document.createTextNode(clean));
+        h1.appendChild(document.createElement('br'));
+        h1.appendChild(document.createTextNode('참여 등록 안내'));
+      }
     }
     (function loadAppTitle() {
       const localTitle = safeStorageGet('raffle_app_title');

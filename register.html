@@ -225,7 +225,7 @@
     function applyAppTitle(title) {
       const clean = String(title || '').trim();
       if (!clean) return;
-      document.title = `${clean} - 참여 등록`;
+      document.title = `${clean} - 등록`;
       const h1 = document.getElementById('page-main-title');
       if (h1) h1.textContent = clean.endsWith('등록') ? clean : `${clean} 등록`;
     }

@@ -277,9 +277,9 @@
       const clean = String(title || '').trim();
       if (!clean) return;
       currentAppTitle = clean;
-      document.title = `${clean} - 당첨 확인`;
+      document.title = `${clean} - 당첨확인`;
       const h1 = document.getElementById('page-main-title');
-      if (h1) h1.textContent = clean.endsWith('당첨 확인') ? clean : `${clean} 당첨 확인`;
+      if (h1) h1.textContent = clean.endsWith('당첨확인') ? clean : `${clean} 당첨확인`;
     }
     if (safeGet('raffle_app_title')) applyAppTitle(safeGet('raffle_app_title'));
 
