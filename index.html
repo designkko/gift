@@ -887,14 +887,30 @@
         <div style="display:flex; flex-direction:column; gap:12px;">
           <div style="padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px;">
             <div style="font-size:0.82rem; font-weight:600; color:var(--text-muted); margin-bottom:8px;">효과음</div>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.88rem; font-weight:600;">추첨 카운트다운</span>
-                <button id="countdown-sound-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleCountdownSound()">🔊 켜짐</button>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label for="countdown-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">추첨 카운트다운</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="countdown-sound-select" onchange="changeCountdownSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
+                    <option value="beep">기본 틱</option>
+                    <option value="drum">북소리 (드럼)</option>
+                    <option value="chime">맑은 종소리</option>
+                    <option value="off">🔇 꺼짐</option>
+                  </select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="previewCountdownSound()">▶</button>
+                </div>
               </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.88rem; font-weight:600;">당첨 빵빠레</span>
-                <button id="fanfare-sound-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleFanfareSound()">🔊 켜짐</button>
+              <div>
+                <label for="fanfare-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">당첨 빵빠레</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="fanfare-sound-select" onchange="changeFanfareSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
+                    <option value="brass">웅장한 브라스</option>
+                    <option value="chime">반짝이는 차임</option>
+                    <option value="festival">경쾌한 축제</option>
+                    <option value="off">🔇 꺼짐</option>
+                  </select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="playFanfare()">▶</button>
+                </div>
               </div>
             </div>
           </div>
@@ -995,12 +1011,12 @@
     };
     let selectedPrizeRow = null;
     let isDrawing = false;
-    let countdownSoundEnabled = safeStorageGet('raffle_sound_countdown') !== 'false';
-    let fanfareSoundEnabled = safeStorageGet('raffle_sound_fanfare') !== 'false';
+    let countdownSoundType = safeStorageGet('raffle_sound_countdown_type') || 'beep';
+    let fanfareSoundType = safeStorageGet('raffle_sound_fanfare_type') || 'brass';
     let audioCtx = null;
 
     function ensureAudio() {
-      if (!countdownSoundEnabled && !fanfareSoundEnabled) return null;
+      if (countdownSoundType === 'off' && fanfareSoundType === 'off') return null;
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return null;
       if (!audioCtx) audioCtx = new Ctx();
@@ -1009,24 +1025,33 @@
     }
 
     function updateSoundButtons() {
-      const cBtn = document.getElementById('countdown-sound-btn');
-      const fBtn = document.getElementById('fanfare-sound-btn');
-      if (cBtn) cBtn.textContent = countdownSoundEnabled ? '🔊 켜짐' : '🔇 꺼짐';
-      if (fBtn) fBtn.textContent = fanfareSoundEnabled ? '🔊 켜짐' : '🔇 꺼짐';
+      const cSel = document.getElementById('countdown-sound-select');
+      const fSel = document.getElementById('fanfare-sound-select');
+      if (cSel) cSel.value = countdownSoundType;
+      if (fSel) fSel.value = fanfareSoundType;
     }
 
-    function toggleCountdownSound() {
-      countdownSoundEnabled = !countdownSoundEnabled;
-      safeStorageSet('raffle_sound_countdown', countdownSoundEnabled ? 'true' : 'false');
-      updateSoundButtons();
-      if (countdownSoundEnabled) ensureAudio();
+    function changeCountdownSound(val) {
+      countdownSoundType = val;
+      safeStorageSet('raffle_sound_countdown_type', val);
+      if (val !== 'off') {
+        ensureAudio();
+        playCountdownTick(3);
+      }
     }
 
-    function toggleFanfareSound() {
-      fanfareSoundEnabled = !fanfareSoundEnabled;
-      safeStorageSet('raffle_sound_fanfare', fanfareSoundEnabled ? 'true' : 'false');
-      updateSoundButtons();
-      if (fanfareSoundEnabled) ensureAudio();
+    function changeFanfareSound(val) {
+      fanfareSoundType = val;
+      safeStorageSet('raffle_sound_fanfare_type', val);
+      if (val !== 'off') {
+        ensureAudio();
+        playFanfare();
+      }
+    }
+
+    function previewCountdownSound() {
+      if (countdownSoundType === 'off') return showToast('카운트다운 효과음이 꺼져 있습니다.');
+      playCountdownTick(1);
     }
 
     function playTone(freq, startOffset, duration, type = 'sine', volume = 0.18) {
@@ -1046,10 +1071,34 @@
       osc.stop(now + duration + 0.02);
     }
 
+    function playDrumHit(isLast) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isLast ? 190 : 145, now);
+      osc.frequency.exponentialRampToValueAtTime(52, now + 0.18);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.24);
+    }
+
     function playCountdownTick(num) {
-      if (!countdownSoundEnabled) return;
-      // 5~2는 경쾌한 틱음, 1은 한 옥타브 높은 긴장감 있는 톤
-      playTone(num === 1 ? 880 : 660, 0, 0.14, 'triangle', 0.22);
+      if (countdownSoundType === 'off') return;
+      if (countdownSoundType === 'drum') {
+        playDrumHit(num === 1);
+      } else if (countdownSoundType === 'chime') {
+        playTone(num === 1 ? 1318.5 : 880, 0, 0.26, 'sine', 0.2);
+        playTone(num === 1 ? 1975.5 : 1318.5, 0.02, 0.22, 'sine', 0.08);
+      } else {
+        // 기본 틱
+        playTone(num === 1 ? 880 : 660, 0, 0.14, 'triangle', 0.22);
+      }
     }
 
     function playBrassNote(freq, startOffset, duration, volume = 0.16) {
@@ -1083,20 +1132,47 @@
     }
 
     function playFanfare() {
-      if (!fanfareSoundEnabled) return;
-      // 웅장한 브라스 빵빠레: 빠-빠-빠-빠아아앙~!!
-      playBrassNote(523.25, 0.00, 0.12, 0.16); // C5
-      playBrassNote(523.25, 0.14, 0.12, 0.16); // C5
-      playBrassNote(523.25, 0.28, 0.12, 0.16); // C5
-      playBrassNote(659.25, 0.42, 0.16, 0.18); // E5
-      playBrassNote(587.33, 0.58, 0.14, 0.16); // D5
-      playBrassNote(659.25, 0.72, 0.14, 0.18); // E5
-      // 피날레 화음 (C5 + E5 + G5 + C6)
-      playBrassNote(261.63, 0.88, 1.05, 0.14); // C4 베이스
-      playBrassNote(523.25, 0.88, 1.05, 0.16); // C5
-      playBrassNote(659.25, 0.88, 1.05, 0.16); // E5
-      playBrassNote(783.99, 0.88, 1.05, 0.16); // G5
-      playBrassNote(1046.50, 0.88, 1.05, 0.18); // C6
+      if (fanfareSoundType === 'off') return;
+      if (fanfareSoundType === 'chime') {
+        // 2. 반짝이는 차임 팡파레
+        const notes = [
+          [523.25, 0.00, 0.35],
+          [659.25, 0.09, 0.35],
+          [783.99, 0.18, 0.35],
+          [1046.50, 0.27, 0.45],
+          [1318.51, 0.36, 0.55],
+          [1567.98, 0.45, 0.85]
+        ];
+        notes.forEach(([f, o, d]) => playTone(f, o, d, 'sine', 0.2));
+        playTone(1046.50, 0.45, 0.85, 'triangle', 0.1);
+      } else if (fanfareSoundType === 'festival') {
+        // 3. 경쾌한 축제 팡파레
+        const notes = [
+          [392.00, 0.00, 0.11], // G4
+          [523.25, 0.11, 0.11], // C5
+          [659.25, 0.22, 0.11], // E5
+          [783.99, 0.33, 0.18], // G5
+          [659.25, 0.52, 0.12], // E5
+          [783.99, 0.64, 0.14], // G5
+          [1046.50, 0.78, 0.75] // C6
+        ];
+        notes.forEach(([f, o, d]) => playTone(f, o, d, 'triangle', 0.24));
+        playTone(523.25, 0.78, 0.75, 'sine', 0.14);
+        playTone(659.25, 0.78, 0.75, 'sine', 0.14);
+      } else {
+        // 1. 웅장한 브라스 빵빠레
+        playBrassNote(523.25, 0.00, 0.12, 0.16);
+        playBrassNote(523.25, 0.14, 0.12, 0.16);
+        playBrassNote(523.25, 0.28, 0.12, 0.16);
+        playBrassNote(659.25, 0.42, 0.16, 0.18);
+        playBrassNote(587.33, 0.58, 0.14, 0.16);
+        playBrassNote(659.25, 0.72, 0.14, 0.18);
+        playBrassNote(261.63, 0.88, 1.05, 0.14);
+        playBrassNote(523.25, 0.88, 1.05, 0.16);
+        playBrassNote(659.25, 0.88, 1.05, 0.16);
+        playBrassNote(783.99, 0.88, 1.05, 0.16);
+        playBrassNote(1046.50, 0.88, 1.05, 0.18);
+      }
     }
 
     // 탭 전환
