@@ -162,7 +162,7 @@
 <body>
   <div class="card" style="margin:auto 0;">
     <div class="header">
-      <h1>🎄 2026 내일교회<br/>성탄 선물 추첨 등록</h1>
+      <h1 id="page-main-title">🎄 2026 내일교회<br/>성탄 선물 추첨 등록</h1>
       <p>이름과 전화번호를 입력해 주세요.</p>
     </div>
 
@@ -221,6 +221,30 @@
     function getGasUrl() {
       return runtimeGasUrl || safeStorageGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL;
     }
+
+    function applyAppTitle(title) {
+      const clean = String(title || '').trim();
+      if (!clean) return;
+      document.title = `${clean} - 참여 등록`;
+      const h1 = document.getElementById('page-main-title');
+      if (h1) h1.textContent = clean.endsWith('등록') ? clean : `${clean} 등록`;
+    }
+
+    (function loadAppTitle() {
+      const localTitle = safeStorageGet('raffle_app_title');
+      if (localTitle) applyAppTitle(localTitle);
+      if (safeStorageGet('raffle_demo_force') === 'true' && localTitle) return;
+      fetch(`${getGasUrl()}?action=getData`)
+        .then(r => r.json())
+        .then(res => {
+          const title = (res && (res.appTitle || (res.data && res.data.appTitle))) || '';
+          if (title) {
+            safeStorageSet('raffle_app_title', title);
+            applyAppTitle(title);
+          }
+        })
+        .catch(() => {});
+    })();
 
     function formatPhoneInput(input) {
       const d = input.value.replace(/\D/g, '').slice(0, 11);
