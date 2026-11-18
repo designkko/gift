@@ -1329,14 +1329,15 @@
       state.participants = payload.participants || [];
       state.prizes = payload.prizes || [];
       state.winners = payload.winners || [];
-      if (payload.appTitle) {
-        state.appTitle = payload.appTitle;
-        document.title = payload.appTitle;
+      const resolvedTitle = payload.appTitle || safeStorageGet('raffle_app_title');
+      if (resolvedTitle) {
+        state.appTitle = resolvedTitle;
+        document.title = resolvedTitle;
         const h1 = document.getElementById('app-main-title');
-        if (h1) h1.textContent = payload.appTitle;
+        if (h1) h1.textContent = resolvedTitle;
         const titleInput = document.getElementById('setting-app-title');
         if (titleInput && document.activeElement !== titleInput) {
-          titleInput.value = payload.appTitle;
+          titleInput.value = resolvedTitle;
         }
       }
       if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
@@ -1727,13 +1728,20 @@
       const titleInput = document.getElementById('setting-app-title');
       const appTitle = titleInput.value.trim();
       if (!appTitle) return showToast('타이틀을 입력해주세요.');
+      safeStorageSet('raffle_app_title', appTitle);
+      applyState({ data: { ...state, appTitle } });
       try {
         const res = await callBackend('saveAppSettings', { settings: { appTitle } });
-        if (!res.ok) return showToast('❌ ' + res.error);
+        if (!res.ok) {
+          if (String(res.error || '').includes('saveAppSettings')) {
+            return showToast('✅ 이 기기에 타이틀이 저장되었습니다. (모든 기기 동기화는 Code.gs 재배포 필요)');
+          }
+          return showToast('❌ ' + res.error);
+        }
         applyState(res);
         showToast('✅ 프로그램 타이틀이 저장되었습니다.');
       } catch (err) {
-        showToast('❌ ' + (err.message || '타이틀 저장 실패'));
+        showToast('✅ 이 기기에 타이틀이 저장되었습니다.');
       }
     }
 
