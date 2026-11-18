@@ -867,9 +867,15 @@
       </div>
 
       <!-- 2. 효과음 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
-        <span style="font-size:0.9rem; font-weight:600;">2. 추첨 카운트다운 / 빵빠레 효과음</span>
-        <button id="sound-toggle-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleSound()">🔊 효과음 켜짐</button>
+      <div style="display:flex; flex-direction:column; gap:8px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.9rem; font-weight:600;">2-1. 추첨 카운트다운 효과음</span>
+          <button id="countdown-sound-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleCountdownSound()">🔊 켜짐</button>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.9rem; font-weight:600;">2-2. 당첨 빵빠레 효과음</span>
+          <button id="fanfare-sound-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleFanfareSound()">🔊 켜짐</button>
+        </div>
       </div>
 
       <!-- 3. 구글시트 연결 -->
@@ -965,11 +971,12 @@
     };
     let selectedPrizeRow = null;
     let isDrawing = false;
-    let soundEnabled = true;
+    let countdownSoundEnabled = safeStorageGet('raffle_sound_countdown') !== 'false';
+    let fanfareSoundEnabled = safeStorageGet('raffle_sound_fanfare') !== 'false';
     let audioCtx = null;
 
     function ensureAudio() {
-      if (!soundEnabled) return null;
+      if (!countdownSoundEnabled && !fanfareSoundEnabled) return null;
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return null;
       if (!audioCtx) audioCtx = new Ctx();
@@ -977,11 +984,25 @@
       return audioCtx;
     }
 
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      const btn = document.getElementById('sound-toggle-btn');
-      btn.textContent = soundEnabled ? '🔊 효과음 켜짐' : '🔇 음소거';
-      if (soundEnabled) ensureAudio();
+    function updateSoundButtons() {
+      const cBtn = document.getElementById('countdown-sound-btn');
+      const fBtn = document.getElementById('fanfare-sound-btn');
+      if (cBtn) cBtn.textContent = countdownSoundEnabled ? '🔊 켜짐' : '🔇 꺼짐';
+      if (fBtn) fBtn.textContent = fanfareSoundEnabled ? '🔊 켜짐' : '🔇 꺼짐';
+    }
+
+    function toggleCountdownSound() {
+      countdownSoundEnabled = !countdownSoundEnabled;
+      safeStorageSet('raffle_sound_countdown', countdownSoundEnabled ? 'true' : 'false');
+      updateSoundButtons();
+      if (countdownSoundEnabled) ensureAudio();
+    }
+
+    function toggleFanfareSound() {
+      fanfareSoundEnabled = !fanfareSoundEnabled;
+      safeStorageSet('raffle_sound_fanfare', fanfareSoundEnabled ? 'true' : 'false');
+      updateSoundButtons();
+      if (fanfareSoundEnabled) ensureAudio();
     }
 
     function playTone(freq, startOffset, duration, type = 'sine', volume = 0.18) {
@@ -1002,7 +1023,7 @@
     }
 
     function playCountdownTick(num) {
-      if (!soundEnabled) return;
+      if (!countdownSoundEnabled) return;
       // 5~2는 경쾌한 틱음, 1은 한 옥타브 높은 긴장감 있는 톤
       playTone(num === 1 ? 880 : 660, 0, 0.14, 'triangle', 0.22);
     }
@@ -1038,7 +1059,7 @@
     }
 
     function playFanfare() {
-      if (!soundEnabled) return;
+      if (!fanfareSoundEnabled) return;
       // 웅장한 브라스 빵빠레: 빠-빠-빠-빠아아앙~!!
       playBrassNote(523.25, 0.00, 0.12, 0.16); // C5
       playBrassNote(523.25, 0.14, 0.12, 0.16); // C5
@@ -1962,6 +1983,7 @@
 
     function openBulkModal() { document.getElementById('bulk-modal').classList.add('open'); }
     async function openSettingsHubModal() {
+      updateSoundButtons();
       const titleInput = document.getElementById('setting-app-title');
       const h1 = document.getElementById('app-main-title');
       if (titleInput && h1) titleInput.value = state.appTitle || h1.textContent.trim();
