@@ -634,7 +634,7 @@
   <div class="container">
     <header>
       <div class="brand">
-        <h1>🎄 2026 내일교회 성탄 선물 추첨</h1>
+        <h1 id="app-main-title">🎄 2026 내일교회 성탄 선물 추첨</h1>
         <p>당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.</p>
       </div>
       <div class="status-bar">
@@ -779,8 +779,21 @@
       </div>
     </section>
 
-    <!-- 3. 상품 & 수량 설정 패널 -->
+    <!-- 3. 설정 & 상품 수정 패널 -->
     <section id="tab-prizes" class="panel">
+      <div class="card">
+        <div class="card-title">
+          <span>프로그램 타이틀 설정</span>
+        </div>
+        <form class="form-row" onsubmit="saveAppTitleSetting(event)">
+          <div class="field">
+            <label for="setting-app-title">행사 / 프로그램 제목</label>
+            <input id="setting-app-title" type="text" placeholder="🎄 2026 내일교회 성탄 선물 추첨" required />
+          </div>
+          <button type="submit" class="btn btn-primary">💾 타이틀 저장</button>
+        </form>
+      </div>
+
       <div class="card">
         <div class="card-title">
           <span>설정 &amp; 상품 수정</span>
@@ -1100,6 +1113,7 @@
             case 'getSmsConfig': runner.getSmsConfig(); break;
             case 'saveSmsConfig': runner.saveSmsConfig(payload.config); break;
             case 'sendWinnersSms': runner.sendWinnersSms(payload.rowIndices); break;
+            case 'saveAppSettings': runner.saveAppSettings(payload.settings); break;
             default: reject(new Error('지원하지 않는 작업: ' + action));
           }
         });
@@ -1281,6 +1295,12 @@
         saveDemoState(db);
         return { ok: true, data: db };
       }
+      if (action === 'saveAppSettings') {
+        const title = String((payload.settings && payload.settings.appTitle) || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+        db.appTitle = title;
+        saveDemoState(db);
+        return { ok: true, appTitle: title, data: db };
+      }
       if (action === 'resetAllDraws') {
         db.participants.forEach(p => { p.isWinner = false; p.prize = ''; p.wonAt = ''; });
         db.prizes.forEach(p => { p.drawn = 0; p.remaining = p.total; });
@@ -1310,6 +1330,16 @@
       state.participants = payload.participants || [];
       state.prizes = payload.prizes || [];
       state.winners = payload.winners || [];
+      if (payload.appTitle) {
+        state.appTitle = payload.appTitle;
+        document.title = payload.appTitle;
+        const h1 = document.getElementById('app-main-title');
+        if (h1) h1.textContent = payload.appTitle;
+        const titleInput = document.getElementById('setting-app-title');
+        if (titleInput && document.activeElement !== titleInput) {
+          titleInput.value = payload.appTitle;
+        }
+      }
       if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
         const firstAvail = state.prizes.find(p => p.remaining > 0) || state.prizes[0];
         selectedPrizeRow = firstAvail ? firstAvail.rowIndex : null;
@@ -1691,6 +1721,21 @@
 
     function addPrizeRow() {
       addPrizeRowElement();
+    }
+
+    async function saveAppTitleSetting(e) {
+      if (e) e.preventDefault();
+      const titleInput = document.getElementById('setting-app-title');
+      const appTitle = titleInput.value.trim();
+      if (!appTitle) return showToast('타이틀을 입력해주세요.');
+      try {
+        const res = await callBackend('saveAppSettings', { settings: { appTitle } });
+        if (!res.ok) return showToast('❌ ' + res.error);
+        applyState(res);
+        showToast('✅ 프로그램 타이틀이 저장되었습니다.');
+      } catch (err) {
+        showToast('❌ ' + (err.message || '타이틀 저장 실패'));
+      }
     }
 
     async function savePrizesConfig() {

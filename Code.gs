@@ -78,6 +78,9 @@ function doPost(e) {
       case 'sendWinnersSms':
         result = sendWinnersSms(body.rowIndices || []);
         break;
+      case 'saveAppSettings':
+        result = saveAppSettings(body.settings || {});
+        break;
       default:
         result = { ok: false, error: '알 수 없는 action: ' + action };
     }
@@ -325,8 +328,11 @@ function getAllData() {
     });
   }
 
+  const appTitle = PropertiesService.getScriptProperties().getProperty('APP_TITLE') || '🎄 2026 내일교회 성탄 선물 추첨';
+
   return {
     ok: true,
+    appTitle: appTitle,
     participants: participants,
     prizes: prizes,
     winners: winners.reverse()
@@ -682,6 +688,13 @@ function normalizePhone_(phone) {
     return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
   return raw;
+}
+
+function saveAppSettings(settings) {
+  const props = PropertiesService.getScriptProperties();
+  const title = String(settings.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+  props.setProperty('APP_TITLE', title);
+  return { ok: true, appTitle: title, data: getAllData() };
 }
 
 /**
