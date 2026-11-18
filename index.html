@@ -858,7 +858,7 @@
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
         <form onsubmit="saveAppTitleSetting(event)" style="display:flex; flex-direction:column; gap:10px;">
           <div class="field">
-            <label for="setting-app-title">1. 프로그램 타이틀</label>
+            <label for="setting-app-title">프로그램 타이틀</label>
             <input id="setting-app-title" type="text" placeholder="🎄 2026 내일교회 성탄 선물 추첨" required />
           </div>
           <div class="field">
@@ -873,7 +873,7 @@
 
       <!-- 2. 효과음 -->
       <div style="display:flex; flex-direction:column; gap:8px; padding:12px 14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
-        <div style="font-size:0.82rem; font-weight:600; color:var(--text-muted); margin-bottom:2px;">2. 효과음</div>
+        <div style="font-size:0.82rem; font-weight:600; color:var(--text-muted); margin-bottom:2px;">효과음</div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:0.9rem; font-weight:600;">추첨 카운트다운 효과음</span>
           <button id="countdown-sound-btn" type="button" class="btn btn-ghost btn-sm" onclick="toggleCountdownSound()">🔊 켜짐</button>
@@ -887,7 +887,7 @@
       <!-- 3. 구글시트 연결 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
         <div class="field" style="margin-bottom:10px;">
-          <label for="gas-url-input">3. 구글시트 웹 앱 URL (Apps Script /exec)</label>
+          <label for="gas-url-input">구글시트 웹 앱 URL (Apps Script /exec)</label>
           <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -899,7 +899,7 @@
       <!-- 4. 문자 API 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:16px;">
         <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">4. 문자 자동발송 API (솔라피 / 알리고)</label>
+          <label for="sms-provider">문자 자동발송 API (솔라피 / 알리고)</label>
           <select id="sms-provider" onchange="toggleSmsFields()">
             <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
             <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
