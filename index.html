@@ -985,7 +985,7 @@
     const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
     const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
     const STORAGE_KEY_DEMO_FORCE = 'raffle_force_demo';
-    const STORAGE_KEY_DEMO = 'raffle_demo_state_v1';
+    const STORAGE_KEY_DEMO = 'raffle_demo_state_v2';
     let runtimeGasUrl = '';
 
     function safeStorageGet(key) {
@@ -1286,12 +1286,16 @@
           { rowIndex: 4, name: '박도윤', phone: '010-3456-7890', isWinner: false, prize: '', wonAt: '' },
           { rowIndex: 5, name: '최지우', phone: '010-4567-8901', isWinner: false, prize: '', wonAt: '' },
           { rowIndex: 6, name: '정하은', phone: '010-5678-9012', isWinner: false, prize: '', wonAt: '' },
-          { rowIndex: 7, name: '강시우', phone: '010-6789-0123', isWinner: false, prize: '', wonAt: '' }
+          { rowIndex: 7, name: '강시우', phone: '010-6789-0123', isWinner: false, prize: '', wonAt: '' },
+          { rowIndex: 8, name: '조수아', phone: '010-7890-1234', isWinner: false, prize: '', wonAt: '' },
+          { rowIndex: 9, name: '윤예준', phone: '010-8901-2345', isWinner: false, prize: '', wonAt: '' },
+          { rowIndex: 10, name: '한은우', phone: '010-9012-3456', isWinner: false, prize: '', wonAt: '' },
+          { rowIndex: 11, name: '임지호', phone: '010-0123-4567', isWinner: false, prize: '', wonAt: '' }
         ],
         prizes: [
-          { rowIndex: 2, name: '1등: 에어팟 프로', total: 1, drawn: 0, remaining: 1, note: '대표 경품' },
-          { rowIndex: 3, name: '2등: 백화점 상품권 5만원', total: 2, drawn: 0, remaining: 2, note: '' },
-          { rowIndex: 4, name: '3등: 스타벅스 아메리카노', total: 3, drawn: 0, remaining: 3, note: '' }
+          { rowIndex: 2, name: '1등: 에어팟 프로', total: 1, drawCount: 1, drawn: 0, remaining: 1, note: '대표 경품' },
+          { rowIndex: 3, name: '2등: 백화점 상품권 5만원', total: 2, drawCount: 2, drawn: 0, remaining: 2, note: '' },
+          { rowIndex: 4, name: '3등: 스타벅스 아메리카노', total: 3, drawCount: 3, drawn: 0, remaining: 3, note: '' }
         ],
         winners: []
       };
