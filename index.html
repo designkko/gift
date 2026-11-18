@@ -638,8 +638,14 @@
         <p>당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.</p>
       </div>
       <div class="status-bar">
-        <a class="btn btn-ghost btn-sm" href="register.html" target="_blank" style="text-decoration:none;">📝 참여자 등록(안내팀용)</a>
-        <a class="btn btn-ghost btn-sm" href="winners.html" target="_blank" style="text-decoration:none;">🏆 당첨 확인(수령처용)</a>
+        <span style="display:inline-flex; gap:4px; align-items:center;">
+          <a class="btn btn-ghost btn-sm" href="register.html" target="_blank" style="text-decoration:none;">📝 참여자 등록(안내팀용)</a>
+          <button class="btn btn-ghost btn-sm" title="참여자 등록(안내팀용) 링크 복사" onclick="copyPageLink('register.html', '참여자 등록(안내팀용)')">🔗</button>
+        </span>
+        <span style="display:inline-flex; gap:4px; align-items:center;">
+          <a class="btn btn-ghost btn-sm" href="winners.html" target="_blank" style="text-decoration:none;">🏆 당첨 확인(수령처용)</a>
+          <button class="btn btn-ghost btn-sm" title="당첨 확인(수령처용) 링크 복사" onclick="copyPageLink('winners.html', '당첨 확인(수령처용)')">🔗</button>
+        </span>
         <button id="sound-toggle-btn" class="btn btn-ghost btn-sm" onclick="toggleSound()">🔊 효과음 켜짐</button>
         <button class="btn btn-ghost btn-sm" onclick="openConfigModal()">⚙️ 구글시트 연결</button>
         <button class="btn btn-ghost btn-sm" onclick="openSmsConfigModal()">📲 문자 API 설정</button>
@@ -1908,6 +1914,16 @@
       document.getElementById('gas-url-input').value = getGasUrl();
       document.getElementById('config-modal').classList.add('open');
     }
+    async function copyPageLink(fileName, label) {
+      const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}${fileName}`;
+      try {
+        await navigator.clipboard.writeText(base);
+        showToast(`🔗 ${label} 링크가 복사되었습니다!`);
+      } catch (e) {
+        prompt(`아래 ${label} 링크를 복사하세요:`, base);
+      }
+    }
+
     async function copyRegisterLink() {
       const gasUrl = getGasUrl().trim();
       let base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
