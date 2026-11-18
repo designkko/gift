@@ -827,6 +827,35 @@ function sendSmsMessages_(items) {
       const body = JSON.parse(resp.getContentText() || '{}');
       if (Number(body.result_code) === 1) sentCount++;
     });
+  } else if (provider === 'munjachunguk') {
+    if (!userId) return { ok: false, error: '문자천국 User ID를 입력해주세요.' };
+    let lastError = '';
+    items.forEach(it => {
+      const receiver = String(it.to || '').replace(/\D/g, '');
+      if (receiver.length < 10) return;
+      const resp = UrlFetchApp.fetch('https://www.skysms.co.kr/apiSend/sendApi_UTF8.php', {
+        method: 'post',
+        payload: {
+          USERID: userId,
+          AUTHKEY: apiKey,
+          DESTNUM: receiver,
+          CALLNUM: sender,
+          TEXT: it.text,
+          TYPE: 'LMS'
+        },
+        muteHttpExceptions: true
+      });
+      const code = resp.getResponseCode();
+      const text = (resp.getContentText() || '').trim();
+      if (code >= 200 && code < 300 && (/^0\b|^success|^ok/i.test(text) || text.split(',')[0].trim() === '0')) {
+        sentCount++;
+      } else {
+        lastError = text || `HTTP ${code}`;
+      }
+    });
+    if (sentCount === 0 && lastError) {
+      return { ok: false, error: `문자천국 발송 실패: ${lastError}` };
+    }
   } else {
     return { ok: false, error: '지원하지 않는 문자 서비스입니다: ' + provider };
   }

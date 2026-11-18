@@ -936,11 +936,12 @@
       <!-- 문자 API 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
         <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">문자 자동발송 API (솔라피 / 알리고)</label>
+          <label for="sms-provider">문자 자동발송 API (솔라피 / 알리고 / 문자천국)</label>
           <select id="sms-provider" onchange="toggleSmsFields()">
             <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
             <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
             <option value="aligo">알리고 (Aligo)</option>
+            <option value="munjachunguk">문자천국 (skysms)</option>
           </select>
         </div>
         <div id="sms-fields" style="display:none;">
@@ -958,7 +959,7 @@
               <input id="sms-api-secret" type="password" placeholder="변경 시에만 입력" />
             </div>
             <div id="sms-userid-wrap" class="field" style="display:none;">
-              <label for="sms-user-id">알리고 User ID</label>
+              <label id="sms-userid-label" for="sms-user-id">알리고 User ID</label>
               <input id="sms-user-id" type="text" placeholder="알리고 아이디" />
             </div>
           </div>
@@ -1977,7 +1978,19 @@
       const provider = document.getElementById('sms-provider').value;
       document.getElementById('sms-fields').style.display = provider === 'none' ? 'none' : 'block';
       document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
-      document.getElementById('sms-userid-wrap').style.display = provider === 'aligo' ? 'block' : 'none';
+      const needsUserId = provider === 'aligo' || provider === 'munjachunguk';
+      document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
+      const userIdLabel = document.getElementById('sms-userid-label');
+      const userIdInput = document.getElementById('sms-user-id');
+      if (userIdLabel && userIdInput) {
+        if (provider === 'munjachunguk') {
+          userIdLabel.textContent = '문자천국 User ID';
+          userIdInput.placeholder = '문자천국 아이디';
+        } else {
+          userIdLabel.textContent = '알리고 User ID';
+          userIdInput.placeholder = '알리고 아이디';
+        }
+      }
     }
 
     async function openSmsConfigModal() {
