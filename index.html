@@ -674,7 +674,7 @@
         <div class="stat-label">상품 수량</div>
         <div class="stat-value" style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
           <span id="stat-prizes-left" style="color:#fbbf24;">0개</span>
-          <span id="stat-prizes-total" style="font-size:0.95rem; font-weight:700; color:var(--text-muted);">/ 0개</span>
+          <span id="stat-prizes-total" style="font-size:0.95rem; font-weight:700; color:var(--text-muted);">전체 0개</span>
         </div>
       </div>
     </section>
@@ -1338,7 +1338,7 @@
       document.getElementById('stat-won').textContent = `${won}명`;
       document.getElementById('stat-unclaimed').textContent = `미수령 ${unclaimed}개`;
       document.getElementById('stat-prizes-left').textContent = `${prizesLeft}개`;
-      document.getElementById('stat-prizes-total').textContent = `/ ${prizesTotal}개`;
+      document.getElementById('stat-prizes-total').textContent = `전체 ${prizesTotal}개`;
     }
 
     function renderDrawSection() {
