@@ -669,7 +669,10 @@
       </div>
       <div class="stat-card">
         <div class="stat-label">추첨 가능 인원 (미당첨)</div>
-        <div class="stat-value" id="stat-eligible" style="color:#818cf8;">0명</div>
+        <div class="stat-value" style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
+          <span id="stat-eligible" style="color:#818cf8;">0명</span>
+          <span id="stat-non-winner" style="font-size:0.95rem; font-weight:700; color:var(--text-muted);">미당첨 0명</span>
+        </div>
       </div>
       <div class="stat-card">
         <div class="stat-label">당첨 완료 (제외됨)</div>
@@ -1518,6 +1521,7 @@
 
       document.getElementById('stat-total').textContent = `${total}명`;
       document.getElementById('stat-eligible').textContent = `${eligible}명`;
+      document.getElementById('stat-non-winner').textContent = `미당첨 ${eligible}명`;
       document.getElementById('stat-won').textContent = `${won}명`;
       document.getElementById('stat-unclaimed').textContent = `미수령 ${unclaimed}개`;
       document.getElementById('stat-prizes-left').textContent = `${prizesLeft}개`;
