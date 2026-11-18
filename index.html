@@ -634,7 +634,7 @@
     <header>
       <div class="brand">
         <h1 id="app-main-title">🎄 2026 내일교회 성탄 선물 추첨</h1>
-        <p>당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.</p>
+        <p id="app-main-subtitle">당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.</p>
       </div>
       <div class="status-bar">
         <span style="display:inline-flex; gap:4px; align-items:center;">
@@ -854,14 +854,20 @@
       <h3>⚙️ 프로그램 설정</h3>
       <p>타이틀, 효과음, 구글시트 연결 및 문자 API 설정을 한 화면에서 관리합니다.</p>
 
-      <!-- 1. 프로그램 타이틀 -->
+      <!-- 1. 프로그램 타이틀 & 설명 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:12px;">
-        <form class="form-row" onsubmit="saveAppTitleSetting(event)">
+        <form onsubmit="saveAppTitleSetting(event)" style="display:flex; flex-direction:column; gap:10px;">
           <div class="field">
             <label for="setting-app-title">1. 프로그램 타이틀</label>
             <input id="setting-app-title" type="text" placeholder="🎄 2026 내일교회 성탄 선물 추첨" required />
           </div>
-          <button type="submit" class="btn btn-primary btn-sm" style="height:40px;">💾 저장</button>
+          <div class="field">
+            <label for="setting-app-subtitle">프로그램 설명</label>
+            <input id="setting-app-subtitle" type="text" placeholder="당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다." />
+          </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="submit" class="btn btn-primary btn-sm">💾 저장</button>
+          </div>
         </form>
       </div>
 
@@ -1317,9 +1323,11 @@
       }
       if (action === 'saveAppSettings') {
         const title = String((payload.settings && payload.settings.appTitle) || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+        const subtitle = String((payload.settings && payload.settings.appSubtitle) || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
         db.appTitle = title;
+        db.appSubtitle = subtitle;
         saveDemoState(db);
-        return { ok: true, appTitle: title, data: db };
+        return { ok: true, appTitle: title, appSubtitle: subtitle, data: db };
       }
       if (action === 'resetAllDraws') {
         db.participants.forEach(p => { p.isWinner = false; p.prize = ''; p.wonAt = ''; });
@@ -1359,6 +1367,16 @@
         const titleInput = document.getElementById('setting-app-title');
         if (titleInput && document.activeElement !== titleInput) {
           titleInput.value = resolvedTitle;
+        }
+      }
+      const resolvedSubtitle = payload.appSubtitle || safeStorageGet('raffle_app_subtitle');
+      if (resolvedSubtitle) {
+        state.appSubtitle = resolvedSubtitle;
+        const subEl = document.getElementById('app-main-subtitle');
+        if (subEl) subEl.textContent = resolvedSubtitle;
+        const subInput = document.getElementById('setting-app-subtitle');
+        if (subInput && document.activeElement !== subInput) {
+          subInput.value = resolvedSubtitle;
         }
       }
       if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
@@ -1747,22 +1765,25 @@
     async function saveAppTitleSetting(e) {
       if (e) e.preventDefault();
       const titleInput = document.getElementById('setting-app-title');
+      const subInput = document.getElementById('setting-app-subtitle');
       const appTitle = titleInput.value.trim();
+      const appSubtitle = (subInput ? subInput.value.trim() : '') || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
       if (!appTitle) return showToast('타이틀을 입력해주세요.');
       safeStorageSet('raffle_app_title', appTitle);
-      applyState({ data: { ...state, appTitle } });
+      safeStorageSet('raffle_app_subtitle', appSubtitle);
+      applyState({ data: { ...state, appTitle, appSubtitle } });
       try {
-        const res = await callBackend('saveAppSettings', { settings: { appTitle } });
+        const res = await callBackend('saveAppSettings', { settings: { appTitle, appSubtitle } });
         if (!res.ok) {
           if (String(res.error || '').includes('saveAppSettings')) {
-            return showToast('✅ 이 기기에 타이틀이 저장되었습니다. (모든 기기 동기화는 Code.gs 재배포 필요)');
+            return showToast('✅ 이 기기에 타이틀·설명이 저장되었습니다. (모든 기기 동기화는 Code.gs 재배포 필요)');
           }
           return showToast('❌ ' + res.error);
         }
         applyState(res);
-        showToast('✅ 프로그램 타이틀이 저장되었습니다.');
+        showToast('✅ 프로그램 타이틀과 설명이 저장되었습니다.');
       } catch (err) {
-        showToast('✅ 이 기기에 타이틀이 저장되었습니다.');
+        showToast('✅ 이 기기에 타이틀·설명이 저장되었습니다.');
       }
     }
 
@@ -1987,6 +2008,9 @@
       const titleInput = document.getElementById('setting-app-title');
       const h1 = document.getElementById('app-main-title');
       if (titleInput && h1) titleInput.value = state.appTitle || h1.textContent.trim();
+      const subInput = document.getElementById('setting-app-subtitle');
+      const subEl = document.getElementById('app-main-subtitle');
+      if (subInput && subEl) subInput.value = state.appSubtitle || subEl.textContent.trim();
       document.getElementById('gas-url-input').value = getGasUrl();
       document.getElementById('settings-modal').classList.add('open');
       try {

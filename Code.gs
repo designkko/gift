@@ -329,10 +329,12 @@ function getAllData() {
   }
 
   const appTitle = PropertiesService.getScriptProperties().getProperty('APP_TITLE') || '🎄 2026 내일교회 성탄 선물 추첨';
+  const appSubtitle = PropertiesService.getScriptProperties().getProperty('APP_SUBTITLE') || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
 
   return {
     ok: true,
     appTitle: appTitle,
+    appSubtitle: appSubtitle,
     participants: participants,
     prizes: prizes,
     winners: winners.reverse()
@@ -693,8 +695,10 @@ function normalizePhone_(phone) {
 function saveAppSettings(settings) {
   const props = PropertiesService.getScriptProperties();
   const title = String(settings.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+  const subtitle = String(settings.appSubtitle || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
   props.setProperty('APP_TITLE', title);
-  return { ok: true, appTitle: title, data: getAllData() };
+  props.setProperty('APP_SUBTITLE', subtitle);
+  return { ok: true, appTitle: title, appSubtitle: subtitle, data: getAllData() };
 }
 
 /**
