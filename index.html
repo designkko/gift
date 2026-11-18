@@ -666,8 +666,8 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">남은 상품 수량</div>
-        <div class="stat-value" id="stat-prizes-left" style="color:#fbbf24;">0개</div>
+        <div class="stat-label">상품 수량</div>
+        <div class="stat-value" id="stat-prizes-left" style="color:#fbbf24;">0 / 0개</div>
       </div>
     </section>
 
@@ -1323,12 +1323,13 @@
       const eligible = total - won;
       const unclaimed = state.winners.filter(w => !w.received).length;
       const prizesLeft = state.prizes.reduce((sum, p) => sum + (p.remaining || 0), 0);
+      const prizesTotal = state.prizes.reduce((sum, p) => sum + (p.total || 0), 0);
 
       document.getElementById('stat-total').textContent = `${total}명`;
       document.getElementById('stat-eligible').textContent = `${eligible}명`;
       document.getElementById('stat-won').textContent = `${won}명`;
       document.getElementById('stat-unclaimed').textContent = `미수령 ${unclaimed}개`;
-      document.getElementById('stat-prizes-left').textContent = `${prizesLeft}개`;
+      document.getElementById('stat-prizes-left').textContent = `${prizesLeft} / ${prizesTotal}개`;
     }
 
     function renderDrawSection() {
