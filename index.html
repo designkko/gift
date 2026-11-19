@@ -706,7 +706,7 @@
 
         <div class="card" style="margin-bottom:0;">
           <div class="card-title">
-            <span>2. 추첨 무대</span>
+            <span>2. 추첨 무대용</span>
             <label class="toggle-label">
               <input type="checkbox" id="mask-phone-toggle" checked onchange="renderAll()" />
               이름 가운데·전화번호 가리기 (개인정보 보호)
@@ -717,7 +717,7 @@
             <div class="stage-prize-label" id="stage-prize-label">왼쪽에서 추첨할 상품을 선택하세요</div>
             <div class="slot-display" id="slot-display">
               <div class="slot-name">준비 완료</div>
-              <div class="slot-phone">전체 화면 버튼을 눌러주세요</div>
+              <div class="slot-phone">추첨 버튼을 눌러주세요</div>
             </div>
 
             <div class="draw-controls">
@@ -725,8 +725,9 @@
                 <label for="draw-count" style="font-size:0.86rem; color:var(--text-muted);">추첨 인원</label>
                 <input id="draw-count" type="number" min="1" max="50" value="1" style="width:76px; text-align:center;" />
               </div>
-              <button id="btn-draw" class="btn draw-btn-big" onclick="openFullscreenDraw()">🖥️ 전체 화면</button>
+              <button id="btn-draw" class="btn draw-btn-big" onclick="openFullscreenDraw()">🎲 추첨</button>
             </div>
+            <p style="margin-top:10px; font-size:0.84rem; color:var(--text-muted); text-align:center;">💡 브라우저를 전체화면 바꾼 후 추첨하세요</p>
           </div>
         </div>
       </div>
