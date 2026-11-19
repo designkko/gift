@@ -725,6 +725,7 @@
                 <label for="draw-count" style="font-size:0.86rem; color:var(--text-muted);">추첨 인원</label>
                 <input id="draw-count" type="number" min="1" max="50" value="1" style="width:76px; text-align:center;" />
               </div>
+              <button id="btn-browser-fs" type="button" class="btn btn-ghost" onclick="toggleBrowserFullscreen()">🖥️ 브라우저 전체화면</button>
               <button id="btn-draw" class="btn draw-btn-big" onclick="openFullscreenDraw()">🎲 추첨</button>
             </div>
             <p style="margin-top:10px; font-size:0.84rem; color:var(--text-muted); text-align:center;">💡 브라우저를 전체화면 바꾼 후 추첨하세요</p>
@@ -1580,6 +1581,32 @@
         countInput.disabled = true;
       }
     }
+
+    function toggleBrowserFullscreen() {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (req) {
+          Promise.resolve(req.call(el)).catch(() => {
+            showToast('브라우저에서 전체화면을 지원하지 않거나 차단되었습니다. F11(Mac: Ctrl+Cmd+F)을 눌러주세요.');
+          });
+        } else {
+          showToast('이 브라우저에서는 전체화면 단축키(F11 / Ctrl+Cmd+F)를 사용해주세요.');
+        }
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) Promise.resolve(exit.call(document)).catch(() => {});
+      }
+    }
+
+    function updateBrowserFullscreenBtn() {
+      const btn = document.getElementById('btn-browser-fs');
+      if (!btn) return;
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      btn.textContent = isFs ? '🗗 전체화면 종료' : '🖥️ 브라우저 전체화면';
+    }
+    document.addEventListener('fullscreenchange', updateBrowserFullscreenBtn);
+    document.addEventListener('webkitfullscreenchange', updateBrowserFullscreenBtn);
 
     function openFullscreenDraw() {
       if (isDrawing) return;
