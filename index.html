@@ -725,10 +725,12 @@
                 <label for="draw-count" style="font-size:0.86rem; color:var(--text-muted);">추첨 인원</label>
                 <input id="draw-count" type="number" min="1" max="50" value="1" style="width:76px; text-align:center;" />
               </div>
-              <button id="btn-browser-fs" type="button" class="btn btn-ghost" onclick="toggleBrowserFullscreen()">🖥️ 브라우저 전체화면</button>
               <button id="btn-draw" class="btn draw-btn-big" onclick="openFullscreenDraw()">🎲 추첨</button>
             </div>
             <p style="margin-top:10px; font-size:0.84rem; color:var(--text-muted); text-align:center;">💡 브라우저를 전체화면 바꾼 후 추첨하세요</p>
+            <div style="margin-top:8px; display:flex; justify-content:center;">
+              <button id="btn-browser-fs" type="button" class="btn btn-ghost btn-sm" onclick="toggleBrowserFullscreen()">🖥️ 브라우저 전체화면</button>
+            </div>
           </div>
         </div>
       </div>
