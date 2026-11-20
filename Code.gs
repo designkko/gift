@@ -328,13 +328,20 @@ function getAllData() {
     });
   }
 
-  const appTitle = PropertiesService.getScriptProperties().getProperty('APP_TITLE') || '🎄 2026 내일교회 성탄 선물 추첨';
-  const appSubtitle = PropertiesService.getScriptProperties().getProperty('APP_SUBTITLE') || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
+  const props = PropertiesService.getScriptProperties();
+  const appTitle = props.getProperty('APP_TITLE') || '🎄 2026 내일교회 성탄 선물 추첨';
+  const appSubtitle = props.getProperty('APP_SUBTITLE') || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
+  const regLimitEnabled = props.getProperty('REG_LIMIT_ENABLED') === 'true';
+  const regMaxCount = Math.max(0, Number(props.getProperty('REG_MAX_COUNT')) || 0);
+  const regDeadline = props.getProperty('REG_DEADLINE') || '';
 
   return {
     ok: true,
     appTitle: appTitle,
     appSubtitle: appSubtitle,
+    regLimitEnabled: regLimitEnabled,
+    regMaxCount: regMaxCount,
+    regDeadline: regDeadline,
     participants: participants,
     prizes: prizes,
     winners: winners.reverse()
@@ -361,8 +368,19 @@ function addParticipant(name, phone) {
       pSheet = ss.getSheetByName(SHEET_NAMES.PARTICIPANTS);
     }
 
+    const allData = getAllData();
+    if (allData.regLimitEnabled) {
+      const deadlineMs = parseDeadlineMs_(allData.regDeadline);
+      if (deadlineMs !== null && Date.now() >= deadlineMs) {
+        return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+      }
+      if (allData.regMaxCount > 0 && allData.participants.length >= allData.regMaxCount) {
+        return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+      }
+    }
+
     // 중복 체크 (이름과 전화번호가 모두 같은 경우만 등록 불가, 전화번호가 같아도 이름이 다르면 등록 가능)
-    const existing = getAllData().participants;
+    const existing = allData.participants;
     const targetDigits = cleanPhone.replace(/\D/g, '');
     const dup = existing.find(
       p => p.name.trim() === cleanName && p.phone.replace(/\D/g, '') === targetDigits
@@ -692,13 +710,49 @@ function normalizePhone_(phone) {
   return raw;
 }
 
+function parseDeadlineMs_(str) {
+  const s = String(str || '').trim();
+  if (!s) return null;
+  try {
+    const tz = Session.getScriptTimeZone() || 'Asia/Seoul';
+    const normalized = s.length >= 16 ? s.slice(0, 16) : s;
+    return Utilities.parseDate(normalized, tz, "yyyy-MM-dd'T'HH:mm").getTime();
+  } catch (e) {
+    const t = new Date(s).getTime();
+    return isNaN(t) ? null : t;
+  }
+}
+
 function saveAppSettings(settings) {
   const props = PropertiesService.getScriptProperties();
-  const title = String(settings.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
-  const subtitle = String(settings.appSubtitle || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
-  props.setProperty('APP_TITLE', title);
-  props.setProperty('APP_SUBTITLE', subtitle);
-  return { ok: true, appTitle: title, appSubtitle: subtitle, data: getAllData() };
+  const s = settings || {};
+  if (s.appTitle !== undefined) {
+    const title = String(s.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+    props.setProperty('APP_TITLE', title);
+  }
+  if (s.appSubtitle !== undefined) {
+    const subtitle = String(s.appSubtitle || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
+    props.setProperty('APP_SUBTITLE', subtitle);
+  }
+  if (s.regLimitEnabled !== undefined) {
+    props.setProperty('REG_LIMIT_ENABLED', s.regLimitEnabled ? 'true' : 'false');
+  }
+  if (s.regMaxCount !== undefined) {
+    props.setProperty('REG_MAX_COUNT', String(Math.max(0, Number(s.regMaxCount) || 0)));
+  }
+  if (s.regDeadline !== undefined) {
+    props.setProperty('REG_DEADLINE', String(s.regDeadline || '').trim());
+  }
+  const data = getAllData();
+  return {
+    ok: true,
+    appTitle: data.appTitle,
+    appSubtitle: data.appSubtitle,
+    regLimitEnabled: data.regLimitEnabled,
+    regMaxCount: data.regMaxCount,
+    regDeadline: data.regDeadline,
+    data: data
+  };
 }
 
 /**

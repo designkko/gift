@@ -186,6 +186,12 @@
       <div class="success-info" id="success-info"></div>
       <button class="btn btn-ghost" onclick="resetForm()">다른 분 추가 등록하기</button>
     </div>
+
+    <div id="closed-box" class="success-box">
+      <div class="success-icon">⛔</div>
+      <div class="success-title">마감 되었습니다.</div>
+      <p id="closed-reason" style="font-size:0.92rem; color:var(--text-muted); margin-top:6px;">참여자 등록이 마감되어 더 이상 신청할 수 없습니다.</p>
+    </div>
   </div>
   <div style="width:100%; max-width:960px; display:flex; justify-content:center; margin-top:auto; padding-top:16px;">
     <a class="btn btn-ghost" href="qr.html" style="width:auto; padding:8px 14px; font-size:0.86rem; margin-top:0; text-decoration:none;">📱 QR코드 안내 페이지</a>
@@ -230,20 +236,68 @@
       if (h1) h1.textContent = clean.endsWith('등록') ? clean : `${clean} 등록`;
     }
 
-    (function loadAppTitle() {
+    let regLimitState = { enabled: false, maxCount: 0, deadline: '', currentCount: 0 };
+
+    function showClosedBox(reason) {
+      document.getElementById('reg-form').style.display = 'none';
+      document.getElementById('success-box').classList.remove('open');
+      const reasonEl = document.getElementById('closed-reason');
+      if (reasonEl && reason) reasonEl.textContent = reason;
+      document.getElementById('closed-box').classList.add('open');
+    }
+
+    function checkRegistrationClosed() {
+      if (!regLimitState.enabled) return false;
+      if (regLimitState.deadline) {
+        const deadlineMs = new Date(regLimitState.deadline).getTime();
+        if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
+          showClosedBox('마감 시간이 지나 참여자 등록이 마감되었습니다.');
+          return true;
+        }
+      }
+      if (regLimitState.maxCount > 0 && regLimitState.currentCount >= regLimitState.maxCount) {
+        showClosedBox('모집 인원이 마감되어 더 이상 신청할 수 없습니다.');
+        return true;
+      }
+      return false;
+    }
+
+    (function loadAppConfig() {
       const localTitle = safeStorageGet('raffle_app_title');
       if (localTitle) applyAppTitle(localTitle);
-      if (safeStorageGet('raffle_demo_force') === 'true' && localTitle) return;
+      if (safeStorageGet('raffle_demo_force') === 'true') {
+        try {
+          const localCfg = JSON.parse(safeStorageGet('raffle_reg_limit_config') || '{}');
+          const demoDb = JSON.parse(safeStorageGet('raffle_demo_state_v2') || '{}');
+          regLimitState = {
+            enabled: !!localCfg.regLimitEnabled,
+            maxCount: Number(localCfg.regMaxCount) || 0,
+            deadline: localCfg.regDeadline || '',
+            currentCount: Array.isArray(demoDb.participants) ? demoDb.participants.length : 0
+          };
+          checkRegistrationClosed();
+        } catch (e) {}
+        if (localTitle) return;
+      }
       fetch(`${getGasUrl()}?action=getData`)
         .then(r => r.json())
         .then(res => {
-          const title = (res && (res.appTitle || (res.data && res.data.appTitle))) || '';
+          const payload = (res && res.data) || res || {};
+          const title = payload.appTitle || '';
           if (title) {
             safeStorageSet('raffle_app_title', title);
             applyAppTitle(title);
           }
+          regLimitState = {
+            enabled: !!payload.regLimitEnabled,
+            maxCount: Number(payload.regMaxCount) || 0,
+            deadline: payload.regDeadline || '',
+            currentCount: Array.isArray(payload.participants) ? payload.participants.length : 0
+          };
+          checkRegistrationClosed();
         })
         .catch(() => {});
+      setInterval(checkRegistrationClosed, 5000);
     })();
 
     function formatPhoneInput(input) {
@@ -255,6 +309,7 @@
 
     async function handleRegister(e) {
       e.preventDefault();
+      if (checkRegistrationClosed()) return;
       const nameEl = document.getElementById('reg-name');
       const phoneEl = document.getElementById('reg-phone');
       const btn = document.getElementById('submit-btn');
@@ -290,8 +345,14 @@
         }
 
         if (!data.ok) {
+          if (data.closed || String(data.error || '').includes('마감')) {
+            showClosedBox(data.error || '참여자 등록이 마감되었습니다.');
+            return;
+          }
           throw new Error(data.error || '등록에 실패했습니다.');
         }
+
+        regLimitState.currentCount += 1;
 
         document.getElementById('reg-form').style.display = 'none';
         document.getElementById('success-info').innerHTML = `<strong>${escapeHtml(name)}</strong><br/>${escapeHtml(phone)}`;

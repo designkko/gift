@@ -937,6 +937,30 @@
         </div>
       </div>
 
+      <!-- 참여자 마감 설정 -->
+      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+          <span style="font-size:0.86rem; font-weight:700; color:var(--text);">참여자 마감 설정</span>
+          <label class="toggle-label" style="margin:0;">
+            <input type="checkbox" id="setting-reg-limit-enabled" />
+            사용
+          </label>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:10px;">
+          <div class="field">
+            <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
+            <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
+          </div>
+          <div class="field">
+            <label for="setting-reg-deadline">마감 날짜/시간 (비우면 제한 없음)</label>
+            <input id="setting-reg-deadline" type="datetime-local" />
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 마감 설정 저장</button>
+        </div>
+      </div>
+
       <!-- 문자 API 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
         <div class="field" style="margin-bottom:10px;">
@@ -1321,6 +1345,15 @@
         return { ok: true, ...db };
       }
       if (action === 'addParticipant') {
+        if (db.regLimitEnabled) {
+          const deadlineMs = db.regDeadline ? new Date(db.regDeadline).getTime() : NaN;
+          if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
+            return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+          }
+          if (Number(db.regMaxCount) > 0 && db.participants.length >= Number(db.regMaxCount)) {
+            return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+          }
+        }
         const cleanName = payload.name.trim();
         const cleanPhone = normalizePhone(payload.phone);
         const targetDigits = cleanPhone.replace(/\D/g, '');
@@ -1442,12 +1475,32 @@
         return { ok: true, data: db };
       }
       if (action === 'saveAppSettings') {
-        const title = String((payload.settings && payload.settings.appTitle) || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
-        const subtitle = String((payload.settings && payload.settings.appSubtitle) || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
-        db.appTitle = title;
-        db.appSubtitle = subtitle;
+        const s = payload.settings || {};
+        if (s.appTitle !== undefined) {
+          db.appTitle = String(s.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+        }
+        if (s.appSubtitle !== undefined) {
+          db.appSubtitle = String(s.appSubtitle || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
+        }
+        if (s.regLimitEnabled !== undefined) {
+          db.regLimitEnabled = !!s.regLimitEnabled;
+        }
+        if (s.regMaxCount !== undefined) {
+          db.regMaxCount = Math.max(0, Number(s.regMaxCount) || 0);
+        }
+        if (s.regDeadline !== undefined) {
+          db.regDeadline = String(s.regDeadline || '').trim();
+        }
         saveDemoState(db);
-        return { ok: true, appTitle: title, appSubtitle: subtitle, data: db };
+        return {
+          ok: true,
+          appTitle: db.appTitle,
+          appSubtitle: db.appSubtitle,
+          regLimitEnabled: !!db.regLimitEnabled,
+          regMaxCount: Number(db.regMaxCount) || 0,
+          regDeadline: db.regDeadline || '',
+          data: db
+        };
       }
       if (action === 'resetAllDraws') {
         db.participants.forEach(p => { p.isWinner = false; p.prize = ''; p.wonAt = ''; });
@@ -1499,6 +1552,17 @@
           subInput.value = resolvedSubtitle;
         }
       }
+      let localRegLimit = {};
+      try { localRegLimit = JSON.parse(safeStorageGet('raffle_reg_limit_config') || '{}'); } catch (e) {}
+      state.regLimitEnabled = payload.regLimitEnabled !== undefined ? !!payload.regLimitEnabled : !!localRegLimit.regLimitEnabled;
+      state.regMaxCount = payload.regMaxCount !== undefined ? Math.max(0, Number(payload.regMaxCount) || 0) : Math.max(0, Number(localRegLimit.regMaxCount) || 0);
+      state.regDeadline = payload.regDeadline !== undefined ? String(payload.regDeadline || '') : String(localRegLimit.regDeadline || '');
+      const limitEnabledEl = document.getElementById('setting-reg-limit-enabled');
+      const limitMaxEl = document.getElementById('setting-reg-max-count');
+      const limitDeadlineEl = document.getElementById('setting-reg-deadline');
+      if (limitEnabledEl) limitEnabledEl.checked = !!state.regLimitEnabled;
+      if (limitMaxEl && document.activeElement !== limitMaxEl) limitMaxEl.value = state.regMaxCount > 0 ? state.regMaxCount : '';
+      if (limitDeadlineEl && document.activeElement !== limitDeadlineEl) limitDeadlineEl.value = state.regDeadline || '';
       if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
         const firstAvail = state.prizes.find(p => p.remaining > 0) || state.prizes[0];
         selectedPrizeRow = firstAvail ? firstAvail.rowIndex : null;
@@ -1934,6 +1998,22 @@
         showToast('✅ 프로그램 타이틀과 설명이 저장되었습니다.');
       } catch (err) {
         showToast('✅ 이 기기에 타이틀·설명이 저장되었습니다.');
+      }
+    }
+
+    async function saveRegLimitSetting() {
+      const regLimitEnabled = !!document.getElementById('setting-reg-limit-enabled').checked;
+      const regMaxCount = Math.max(0, Number(document.getElementById('setting-reg-max-count').value) || 0);
+      const regDeadline = (document.getElementById('setting-reg-deadline').value || '').trim();
+      safeStorageSet('raffle_reg_limit_config', JSON.stringify({ regLimitEnabled, regMaxCount, regDeadline }));
+      applyState({ data: { ...state, regLimitEnabled, regMaxCount, regDeadline } });
+      try {
+        const res = await callBackend('saveAppSettings', { settings: { regLimitEnabled, regMaxCount, regDeadline } });
+        if (!res.ok) return showToast('❌ ' + res.error);
+        applyState(res);
+        showToast('✅ 참여자 마감 설정이 저장되었습니다.');
+      } catch (err) {
+        showToast('✅ 이 기기에 참여자 마감 설정이 저장되었습니다.');
       }
     }
 
