@@ -946,14 +946,19 @@
             사용
           </label>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:10px;">
+        <div style="display:grid; grid-template-columns:1fr 1.6fr; gap:10px; margin-bottom:10px;">
           <div class="field">
             <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
             <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
           </div>
           <div class="field">
-            <label for="setting-reg-deadline">마감 날짜/시간 (비우면 제한 없음)</label>
-            <input id="setting-reg-deadline" type="datetime-local" />
+            <label for="setting-reg-deadline-date">마감 날짜 / 시간 (비우면 제한 없음)</label>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <input id="setting-reg-deadline-date" type="date" style="color-scheme:dark; flex:1; min-width:135px;" />
+              <select id="setting-reg-deadline-hour" style="width:76px; padding:9px 6px;"></select>
+              <select id="setting-reg-deadline-minute" style="width:76px; padding:9px 6px;"></select>
+              <button type="button" class="btn btn-ghost btn-sm" title="마감 날짜 초기화" onclick="clearRegDeadlineInput()">✕</button>
+            </div>
           </div>
         </div>
         <div style="display:flex; justify-content:flex-end;">
@@ -1559,10 +1564,20 @@
       state.regDeadline = payload.regDeadline !== undefined ? String(payload.regDeadline || '') : String(localRegLimit.regDeadline || '');
       const limitEnabledEl = document.getElementById('setting-reg-limit-enabled');
       const limitMaxEl = document.getElementById('setting-reg-max-count');
-      const limitDeadlineEl = document.getElementById('setting-reg-deadline');
+      const limitDateEl = document.getElementById('setting-reg-deadline-date');
+      const limitHourEl = document.getElementById('setting-reg-deadline-hour');
+      const limitMinEl = document.getElementById('setting-reg-deadline-minute');
       if (limitEnabledEl) limitEnabledEl.checked = !!state.regLimitEnabled;
       if (limitMaxEl && document.activeElement !== limitMaxEl) limitMaxEl.value = state.regMaxCount > 0 ? state.regMaxCount : '';
-      if (limitDeadlineEl && document.activeElement !== limitDeadlineEl) limitDeadlineEl.value = state.regDeadline || '';
+      if (limitDateEl && document.activeElement !== limitDateEl && document.activeElement !== limitHourEl && document.activeElement !== limitMinEl) {
+        const [dPart, tPart] = (state.regDeadline || '').split('T');
+        limitDateEl.value = dPart || '';
+        if (tPart && limitHourEl && limitMinEl) {
+          const [hh, mm] = tPart.split(':');
+          if (hh) limitHourEl.value = hh.padStart(2, '0');
+          if (mm) limitMinEl.value = String(Math.floor((Number(mm) || 0) / 5) * 5).padStart(2, '0');
+        }
+      }
       if (!selectedPrizeRow || !state.prizes.some(p => p.rowIndex === selectedPrizeRow)) {
         const firstAvail = state.prizes.find(p => p.remaining > 0) || state.prizes[0];
         selectedPrizeRow = firstAvail ? firstAvail.rowIndex : null;
@@ -2001,10 +2016,37 @@
       }
     }
 
+    (function initRegDeadlineSelects() {
+      const hourEl = document.getElementById('setting-reg-deadline-hour');
+      const minEl = document.getElementById('setting-reg-deadline-minute');
+      if (hourEl && hourEl.options.length === 0) {
+        for (let h = 0; h < 24; h++) {
+          const v = String(h).padStart(2, '0');
+          hourEl.add(new Option(`${v}시`, v));
+        }
+        hourEl.value = '18';
+      }
+      if (minEl && minEl.options.length === 0) {
+        for (let m = 0; m < 60; m += 5) {
+          const v = String(m).padStart(2, '0');
+          minEl.add(new Option(`${v}분`, v));
+        }
+        minEl.value = '00';
+      }
+    })();
+
+    function clearRegDeadlineInput() {
+      const dateEl = document.getElementById('setting-reg-deadline-date');
+      if (dateEl) dateEl.value = '';
+    }
+
     async function saveRegLimitSetting() {
       const regLimitEnabled = !!document.getElementById('setting-reg-limit-enabled').checked;
       const regMaxCount = Math.max(0, Number(document.getElementById('setting-reg-max-count').value) || 0);
-      const regDeadline = (document.getElementById('setting-reg-deadline').value || '').trim();
+      const dateVal = (document.getElementById('setting-reg-deadline-date').value || '').trim();
+      const hourVal = (document.getElementById('setting-reg-deadline-hour').value || '18').padStart(2, '0');
+      const minVal = (document.getElementById('setting-reg-deadline-minute').value || '00').padStart(2, '0');
+      const regDeadline = dateVal ? `${dateVal}T${hourVal}:${minVal}` : '';
       safeStorageSet('raffle_reg_limit_config', JSON.stringify({ regLimitEnabled, regMaxCount, regDeadline }));
       applyState({ data: { ...state, regLimitEnabled, regMaxCount, regDeadline } });
       try {
