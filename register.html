@@ -247,7 +247,6 @@
     }
 
     function checkRegistrationClosed() {
-      if (!regLimitState.enabled) return false;
       if (regLimitState.deadline) {
         const deadlineMs = new Date(regLimitState.deadline).getTime();
         if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {

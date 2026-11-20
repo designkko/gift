@@ -369,14 +369,12 @@ function addParticipant(name, phone) {
     }
 
     const allData = getAllData();
-    if (allData.regLimitEnabled) {
-      const deadlineMs = parseDeadlineMs_(allData.regDeadline);
-      if (deadlineMs !== null && Date.now() >= deadlineMs) {
-        return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
-      }
-      if (allData.regMaxCount > 0 && allData.participants.length >= allData.regMaxCount) {
-        return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
-      }
+    const deadlineMs = parseDeadlineMs_(allData.regDeadline);
+    if (deadlineMs !== null && Date.now() >= deadlineMs) {
+      return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+    }
+    if (allData.regMaxCount > 0 && allData.participants.length >= allData.regMaxCount) {
+      return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
     }
 
     // 중복 체크 (이름과 전화번호가 모두 같은 경우만 등록 불가, 전화번호가 같아도 이름이 다르면 등록 가능)
