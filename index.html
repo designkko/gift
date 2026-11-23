@@ -2369,7 +2369,8 @@
       el.textContent = msg;
       el.classList.add('show');
       clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+      const duration = (String(msg).startsWith('❌') || String(msg).startsWith('⚠️')) ? 6000 : 2800;
+      window.__toastTimer = setTimeout(() => el.classList.remove('show'), duration);
     }
 
     function escapeHtml(str) {
