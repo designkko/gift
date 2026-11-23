@@ -970,6 +970,7 @@
             <option value="aligo">알리고 (Aligo)</option>
             <option value="munjachunguk">문자천국 (skysms)</option>
           </select>
+          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#fbbf24;">⚠️ 문자천국은 해외 IP(구글 Apps Script 서버) 발송을 차단하므로, 차단 해제가 어렵다면 솔라피(Solapi) 사용을 권장합니다.</div>
         </div>
         <div id="sms-fields" style="display:none;">
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
@@ -2123,6 +2124,8 @@
       document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
       const needsUserId = provider === 'aligo' || provider === 'munjachunguk';
       document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
+      const noteEl = document.getElementById('sms-provider-note');
+      if (noteEl) noteEl.style.display = provider === 'munjachunguk' ? 'block' : 'none';
       const userIdLabel = document.getElementById('sms-userid-label');
       const userIdInput = document.getElementById('sms-user-id');
       if (userIdLabel && userIdInput) {
