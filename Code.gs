@@ -12,20 +12,9 @@ function onOpen() {
     .createMenu('🎉 추첨 관리')
     .addItem('1. 시트 입력 양식 자동 생성', 'setupSheets')
     .addItem('2. 샘플 데이터 채우기 (테스트용)', 'insertSampleData')
-    .addItem('3. 문자 API 외부연결 권한 승인', 'authorizeExternalRequest')
     .addSeparator()
     .addItem('당첨 기록만 초기화 (재추첨 준비)', 'resetAllDrawsMenu')
     .addToUi();
-}
-
-/**
- * 문자 API 외부 요청(UrlFetchApp) 권한 승인용 헬퍼
- */
-function authorizeExternalRequest() {
-  UrlFetchApp.fetch('https://www.skysms.co.kr', { muteHttpExceptions: true });
-  try {
-    SpreadsheetApp.getUi().alert('✅ 외부 문자 API 연결 권한이 승인되었습니다! 이제 웹 앱을 새 버전으로 재배포하거나 바로 테스트하실 수 있습니다.');
-  } catch (e) {}
 }
 
 /**
@@ -79,15 +68,6 @@ function doPost(e) {
       case 'setupSheets':
         setupSheets(true);
         result = { ok: true, message: '시트 양식이 생성되었습니다.' };
-        break;
-      case 'getSmsConfig':
-        result = getSmsConfig();
-        break;
-      case 'saveSmsConfig':
-        result = saveSmsConfig(body.config || {});
-        break;
-      case 'sendWinnersSms':
-        result = sendWinnersSms(body.rowIndices || []);
         break;
       case 'saveAppSettings':
         result = saveAppSettings(body.settings || {});
@@ -582,27 +562,11 @@ function drawWinners(prizeName, count, prizeRowIndex) {
       wSheet.getRange(startRow, 1, winnerLogRows.length, 5).setValues(winnerLogRows);
     }
 
-    // 문자 API 자동 발송 설정이 켜져 있으면 즉시 발송
-    let smsResult = null;
-    try {
-      const props = PropertiesService.getScriptProperties();
-      if (props.getProperty('SMS_AUTO_SEND') === 'true' && (props.getProperty('SMS_PROVIDER') || 'none') !== 'none') {
-        const items = picked.map(person => ({
-          to: person.phone,
-          text: buildWinnerSmsText_(person.name, prize.name)
-        }));
-        smsResult = sendSmsMessages_(items);
-      }
-    } catch (smsErr) {
-      smsResult = { ok: false, error: smsErr.message };
-    }
-
     return {
       ok: true,
       picked: picked,
       prizeName: prize.name,
       wonAt: nowStr,
-      smsResult: smsResult,
       data: getAllData()
     };
   } finally {
@@ -762,185 +726,4 @@ function saveAppSettings(settings) {
     regDeadline: data.regDeadline,
     data: data
   };
-}
-
-/**
- * 문자 API 설정 조회 (시크릿은 마스킹)
- */
-function getSmsConfig() {
-  const props = PropertiesService.getScriptProperties();
-  return {
-    ok: true,
-    config: {
-      provider: props.getProperty('SMS_PROVIDER') || 'none',
-      sender: props.getProperty('SMS_SENDER') || '',
-      userId: props.getProperty('SMS_USER_ID') || '',
-      autoSend: props.getProperty('SMS_AUTO_SEND') === 'true',
-      hasApiKey: !!props.getProperty('SMS_API_KEY'),
-      hasApiSecret: !!props.getProperty('SMS_API_SECRET')
-    }
-  };
-}
-
-/**
- * 문자 API 설정 저장
- */
-function saveSmsConfig(config) {
-  const props = PropertiesService.getScriptProperties();
-  const provider = String(config.provider || 'none').trim();
-  props.setProperty('SMS_PROVIDER', provider);
-  props.setProperty('SMS_SENDER', String(config.sender || '').replace(/\D/g, ''));
-  props.setProperty('SMS_USER_ID', String(config.userId || '').trim());
-  props.setProperty('SMS_AUTO_SEND', config.autoSend ? 'true' : 'false');
-  if (config.apiKey && String(config.apiKey).trim()) {
-    props.setProperty('SMS_API_KEY', String(config.apiKey).trim());
-  }
-  if (config.apiSecret && String(config.apiSecret).trim()) {
-    props.setProperty('SMS_API_SECRET', String(config.apiSecret).trim());
-  }
-  return getSmsConfig();
-}
-
-function buildWinnerSmsText_(name, prizeName) {
-  return `[2026 내일교회 성탄 선물 추첨]\n${name}님, '${prizeName}' 당첨을 축하드립니다!\n당첨확인 문자를 가지고 선물수령처에 오셔서 수령하세요.`;
-}
-
-/**
- * 선택한 당첨자(또는 전체 미수령자)에게 문자 API 일괄 발송
- */
-function sendWinnersSms(rowIndices) {
-  const data = getAllData();
-  const targetSet = Array.isArray(rowIndices) && rowIndices.length > 0 ? new Set(rowIndices.map(Number)) : null;
-  const targets = data.winners.filter(w => {
-    if (targetSet) return targetSet.has(w.rowIndex);
-    return !w.received;
-  });
-  if (targets.length === 0) {
-    return { ok: false, error: '발송할 대상자가 없습니다.' };
-  }
-  const items = targets.map(w => ({
-    to: w.phone,
-    text: buildWinnerSmsText_(w.name, w.prize)
-  }));
-  return sendSmsMessages_(items);
-}
-
-function sendSmsMessages_(items) {
-  try {
-    return sendSmsMessagesImpl_(items);
-  } catch (err) {
-    const msg = String((err && err.message) || err || '');
-    if (msg.indexOf('script.external_request') !== -1 || msg.indexOf('UrlFetchApp') !== -1) {
-      return {
-        ok: false,
-        error: '구글시트 [🎉 추첨 관리 > 3. 문자 API 외부연결 권한 승인] 또는 Apps Script에서 authorizeExternalRequest 함수를 1회 실행해 권한을 허용해주세요.'
-      };
-    }
-    return { ok: false, error: msg || '문자 발송 중 오류가 발생했습니다.' };
-  }
-}
-
-function sendSmsMessagesImpl_(items) {
-  const props = PropertiesService.getScriptProperties();
-  const provider = props.getProperty('SMS_PROVIDER') || 'none';
-  const apiKey = props.getProperty('SMS_API_KEY') || '';
-  const apiSecret = props.getProperty('SMS_API_SECRET') || '';
-  const userId = props.getProperty('SMS_USER_ID') || '';
-  const sender = (props.getProperty('SMS_SENDER') || '').replace(/\D/g, '');
-
-  if (provider === 'none') {
-    return { ok: false, error: '문자 API 서비스가 설정되지 않았습니다. [⚙️ 설정]에서 먼저 설정해주세요.' };
-  }
-  if (!apiKey || (provider !== 'jmunja' && !sender)) {
-    return { ok: false, error: 'API Key(비밀번호)와 발신번호를 모두 입력해주세요.' };
-  }
-
-  let sentCount = 0;
-  if (provider === 'solapi') {
-    if (!apiSecret) return { ok: false, error: '솔라피 API Secret을 입력해주세요.' };
-    const date = new Date().toISOString();
-    const salt = Utilities.getUuid().replace(/-/g, '');
-    const sigBytes = Utilities.computeHmacSha256Signature(date + salt, apiSecret);
-    const signature = sigBytes.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
-
-    const messages = items.map(it => ({
-      to: String(it.to || '').replace(/\D/g, ''),
-      from: sender,
-      text: it.text
-    })).filter(m => m.to.length >= 10);
-
-    const resp = UrlFetchApp.fetch('https://api.solapi.com/messages/v4/send-many/detail', {
-      method: 'post',
-      contentType: 'application/json',
-      headers: {
-        Authorization: `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`
-      },
-      payload: JSON.stringify({ messages }),
-      muteHttpExceptions: true
-    });
-    const code = resp.getResponseCode();
-    const body = JSON.parse(resp.getContentText() || '{}');
-    if (code >= 400) {
-      return { ok: false, error: body.errorMessage || body.message || `솔라피 오류 (${code})` };
-    }
-    sentCount = messages.length;
-  } else if (provider === 'aligo') {
-    if (!userId) return { ok: false, error: '알리고 User ID를 입력해주세요.' };
-    items.forEach(it => {
-      const receiver = String(it.to || '').replace(/\D/g, '');
-      if (receiver.length < 10) return;
-      const resp = UrlFetchApp.fetch('https://apis.aligo.in/send/', {
-        method: 'post',
-        payload: {
-          key: apiKey,
-          user_id: userId,
-          sender: sender,
-          receiver: receiver,
-          msg: it.text,
-          msg_type: 'LMS',
-          title: '2026 내일교회 성탄 선물 추첨'
-        },
-        muteHttpExceptions: true
-      });
-      const body = JSON.parse(resp.getContentText() || '{}');
-      if (Number(body.result_code) === 1) sentCount++;
-    });
-  } else if (provider === 'jmunja') {
-    if (!userId) return { ok: false, error: '제이문자 아이디를 입력해주세요.' };
-    const subject = props.getProperty('APP_TITLE') || '2026 내일교회 성탄 선물 추첨';
-    let lastError = '';
-    items.forEach(it => {
-      const receiver = String(it.to || '').replace(/\D/g, '');
-      if (receiver.length < 10) return;
-      const resp = UrlFetchApp.fetch('https://jmunja.com/sms/app/api.php', {
-        method: 'post',
-        payload: {
-          mode: 'send',
-          id: userId,
-          pw: apiKey,
-          title: subject,
-          message: it.text,
-          reqlist: receiver
-        },
-        muteHttpExceptions: true
-      });
-      const code = resp.getResponseCode();
-      const rawText = (resp.getContentText() || '').trim();
-      const cleanText = rawText.replace(':header_stop:', '').trim();
-      const parts = cleanText.split('|');
-      const countNum = Number(parts[0]);
-      if (code >= 200 && code < 300 && countNum > 0) {
-        sentCount += countNum;
-      } else {
-        lastError = parts[1] || cleanText || `HTTP ${code}`;
-      }
-    });
-    if (sentCount === 0 && lastError) {
-      return { ok: false, error: `제이문자 발송 실패: ${lastError}` };
-    }
-  } else {
-    return { ok: false, error: '지원하지 않는 문자 서비스입니다: ' + provider };
-  }
-
-  return { ok: true, sentCount: sentCount };
 }

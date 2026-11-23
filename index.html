@@ -867,7 +867,7 @@
   <div id="settings-modal" class="modal-backdrop" style="align-items:flex-start; padding-top:20px;">
     <div class="modal" style="max-width:860px; max-height:94vh; overflow-y:auto;">
       <h3>⚙️ 프로그램 설정</h3>
-      <p>타이틀, 효과음, 구글시트 연결 및 문자 API 설정을 한 화면에서 관리합니다.</p>
+      <p>타이틀, 효과음, 참여자 마감 및 구글시트 연결 설정을 한 화면에서 관리합니다.</p>
 
       <div class="settings-grid">
         <!-- 프로그램 타이틀 & 설명 -->
@@ -957,47 +957,6 @@
         </div>
         <div style="display:flex; justify-content:flex-end;">
           <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 마감 설정 저장</button>
-        </div>
-      </div>
-
-      <!-- 문자 API 설정 -->
-      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
-        <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">문자 자동발송 API (제이문자 / 솔라피 / 알리고)</label>
-          <select id="sms-provider" onchange="toggleSmsFields()">
-            <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
-            <option value="jmunja">제이문자 (jmunja.com 폰문자)</option>
-            <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
-            <option value="aligo">알리고 (Aligo)</option>
-          </select>
-          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;">💡 제이문자(폰문자)는 안드로이드 제이문자 앱과 연동해 내 핸드폰 번호로 발송하므로 해외/클라우드 IP 제한 없이 구글 Apps Script에서 바로 사용할 수 있습니다. (제이문자 [API 연동 부가사용료] 옵션 필요)</div>
-        </div>
-        <div id="sms-fields" style="display:none;">
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
-            <div id="sms-sender-wrap" class="field">
-              <label for="sms-sender">발신번호 (숫자만)</label>
-              <input id="sms-sender" type="tel" placeholder="01012345678" />
-            </div>
-            <div class="field">
-              <label id="sms-apikey-label" for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
-              <input id="sms-api-key" type="password" placeholder="변경 시에만 입력" />
-            </div>
-            <div id="sms-secret-wrap" class="field">
-              <label for="sms-api-secret">API Secret (솔라피) <span id="sms-secret-status" style="color:#34d399;"></span></label>
-              <input id="sms-api-secret" type="password" placeholder="변경 시에만 입력" />
-            </div>
-            <div id="sms-userid-wrap" class="field" style="display:none;">
-              <label id="sms-userid-label" for="sms-user-id">알리고 User ID</label>
-              <input id="sms-user-id" type="text" placeholder="알리고 아이디" />
-            </div>
-          </div>
-          <label class="toggle-label" style="margin:4px 0 10px;">
-            <input type="checkbox" id="sms-auto-send" />
-            추첨 완료 즉시 당첨자에게 자동 문자 발송
-          </label>
-        </div>
-        <div style="display:flex; justify-content:flex-end;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveSmsConfigForm()">💾 문자 API 저장</button>
         </div>
       </div>
 
@@ -1276,9 +1235,6 @@
             case 'cancelWinner': runner.cancelWinner(payload.rowIndex); break;
             case 'toggleWinnerReceived': runner.toggleWinnerReceived(payload.rowIndex, payload.received); break;
             case 'resetAllDraws': runner.resetAllDraws(); break;
-            case 'getSmsConfig': runner.getSmsConfig(); break;
-            case 'saveSmsConfig': runner.saveSmsConfig(payload.config); break;
-            case 'sendWinnersSms': runner.sendWinnersSms(payload.rowIndices); break;
             case 'saveAppSettings': runner.saveAppSettings(payload.settings); break;
             default: reject(new Error('지원하지 않는 작업: ' + action));
           }
@@ -1846,10 +1802,6 @@
           }
           playFanfare();
           launchConfetti();
-          if (res.smsResult) {
-            if (res.smsResult.ok) showToast(`📩 ${res.smsResult.sentCount}명에게 당첨 문자가 자동 발송되었습니다!`);
-            else showToast('⚠️ 문자 자동발송 실패: ' + res.smsResult.error);
-          }
         }
       } catch (err) {
         clearInterval(animTimer);
@@ -2118,83 +2070,6 @@
       return `sms:${phoneDigits}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
     }
 
-    function toggleSmsFields() {
-      const provider = document.getElementById('sms-provider').value;
-      document.getElementById('sms-fields').style.display = provider === 'none' ? 'none' : 'block';
-      document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
-      const senderWrap = document.getElementById('sms-sender-wrap');
-      if (senderWrap) senderWrap.style.display = provider === 'jmunja' ? 'none' : 'block';
-      const needsUserId = provider === 'aligo' || provider === 'jmunja';
-      document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
-      const noteEl = document.getElementById('sms-provider-note');
-      if (noteEl) noteEl.style.display = provider === 'jmunja' ? 'block' : 'none';
-      const userIdLabel = document.getElementById('sms-userid-label');
-      const userIdInput = document.getElementById('sms-user-id');
-      const apiKeyLabel = document.getElementById('sms-apikey-label');
-      const keyStatus = document.getElementById('sms-key-status');
-      const statusHtml = keyStatus ? ` <span id="sms-key-status" style="color:#34d399;">${keyStatus.textContent}</span>` : '';
-      if (userIdLabel && userIdInput) {
-        if (provider === 'jmunja') {
-          userIdLabel.textContent = '제이문자 아이디';
-          userIdInput.placeholder = '제이문자 아이디';
-          if (apiKeyLabel) apiKeyLabel.innerHTML = '제이문자 비밀번호' + statusHtml;
-        } else {
-          userIdLabel.textContent = '알리고 User ID';
-          userIdInput.placeholder = '알리고 아이디';
-          if (apiKeyLabel) apiKeyLabel.innerHTML = 'API Key' + statusHtml;
-        }
-      }
-    }
-
-    async function openSmsConfigModal() {
-      document.getElementById('sms-config-modal').classList.add('open');
-      try {
-        const res = await callBackend('getSmsConfig');
-        if (res.ok && res.config) {
-          document.getElementById('sms-provider').value = res.config.provider || 'none';
-          document.getElementById('sms-sender').value = res.config.sender || '';
-          document.getElementById('sms-user-id').value = res.config.userId || '';
-          document.getElementById('sms-auto-send').checked = !!res.config.autoSend;
-          document.getElementById('sms-key-status').textContent = res.config.hasApiKey ? '(저장됨)' : '';
-          document.getElementById('sms-secret-status').textContent = res.config.hasApiSecret ? '(저장됨)' : '';
-          document.getElementById('sms-api-key').value = '';
-          document.getElementById('sms-api-secret').value = '';
-          toggleSmsFields();
-        }
-      } catch (e) {}
-    }
-
-    async function saveSmsConfigForm() {
-      const config = {
-        provider: document.getElementById('sms-provider').value,
-        sender: document.getElementById('sms-sender').value.trim(),
-        apiKey: document.getElementById('sms-api-key').value.trim(),
-        apiSecret: document.getElementById('sms-api-secret').value.trim(),
-        userId: document.getElementById('sms-user-id').value.trim(),
-        autoSend: document.getElementById('sms-auto-send').checked
-      };
-      try {
-        const res = await callBackend('saveSmsConfig', { config });
-        if (!res.ok) return showToast('❌ ' + res.error);
-        showToast('✅ 문자 API 설정이 저장되었습니다.');
-      } catch (err) {
-        showToast('❌ ' + (err.message || '문자 API 설정 저장 실패'));
-      }
-    }
-
-    async function sendAllSmsViaApi() {
-      const targets = state.winners.filter(w => !w.received);
-      if (targets.length === 0) return showToast('발송할 미수령 당첨자가 없습니다.');
-      if (!confirm(`미수령 당첨자 ${targets.length}명에게 문자 API로 당첨 안내 문자를 발송할까요?`)) return;
-      try {
-        const res = await callBackend('sendWinnersSms', { rowIndices: targets.map(t => t.rowIndex) });
-        if (!res.ok) return showToast('❌ ' + res.error);
-        showToast(`🚀 ${res.sentCount}명에게 문자 발송을 완료했습니다!`);
-      } catch (err) {
-        showToast('❌ ' + (err.message || '문자 발송 실패'));
-      }
-    }
-
     async function handleToggleReceived(rowIndex, received) {
       const target = state.winners.find(w => w.rowIndex === rowIndex);
       const prev = target ? target.received : !received;
@@ -2306,20 +2181,6 @@
       if (subInput && subEl) subInput.value = state.appSubtitle || subEl.textContent.trim();
       document.getElementById('gas-url-input').value = getGasUrl();
       document.getElementById('settings-modal').classList.add('open');
-      try {
-        const res = await callBackend('getSmsConfig');
-        if (res.ok && res.config) {
-          document.getElementById('sms-provider').value = res.config.provider || 'none';
-          document.getElementById('sms-sender').value = res.config.sender || '';
-          document.getElementById('sms-user-id').value = res.config.userId || '';
-          document.getElementById('sms-auto-send').checked = !!res.config.autoSend;
-          document.getElementById('sms-key-status').textContent = res.config.hasApiKey ? '(저장됨)' : '';
-          document.getElementById('sms-secret-status').textContent = res.config.hasApiSecret ? '(저장됨)' : '';
-          document.getElementById('sms-api-key').value = '';
-          document.getElementById('sms-api-secret').value = '';
-          toggleSmsFields();
-        }
-      } catch (e) {}
     }
     async function copyPageLink(fileName, label) {
       const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}${fileName}`;
