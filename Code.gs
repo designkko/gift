@@ -849,10 +849,10 @@ function sendSmsMessagesImpl_(items) {
   const sender = (props.getProperty('SMS_SENDER') || '').replace(/\D/g, '');
 
   if (provider === 'none') {
-    return { ok: false, error: '문자 API 서비스가 설정되지 않았습니다. [📲 문자 API 설정]에서 먼저 설정해주세요.' };
+    return { ok: false, error: '문자 API 서비스가 설정되지 않았습니다. [⚙️ 설정]에서 먼저 설정해주세요.' };
   }
-  if (!apiKey || !sender) {
-    return { ok: false, error: 'API Key와 발신번호를 모두 입력해주세요.' };
+  if (!apiKey || (provider !== 'jmunja' && !sender)) {
+    return { ok: false, error: 'API Key(비밀번호)와 발신번호를 모두 입력해주세요.' };
   }
 
   let sentCount = 0;
@@ -905,39 +905,38 @@ function sendSmsMessagesImpl_(items) {
       const body = JSON.parse(resp.getContentText() || '{}');
       if (Number(body.result_code) === 1) sentCount++;
     });
-  } else if (provider === 'munjachunguk') {
-    if (!userId) return { ok: false, error: '문자천국 User ID를 입력해주세요.' };
+  } else if (provider === 'jmunja') {
+    if (!userId) return { ok: false, error: '제이문자 아이디를 입력해주세요.' };
     const subject = props.getProperty('APP_TITLE') || '2026 내일교회 성탄 선물 추첨';
     let lastError = '';
     items.forEach(it => {
       const receiver = String(it.to || '').replace(/\D/g, '');
       if (receiver.length < 10) return;
-      const resp = UrlFetchApp.fetch('https://www.skysms.co.kr/apiSend/sendApi_UTF8.php', {
+      const resp = UrlFetchApp.fetch('https://jmunja.com/sms/app/api.php', {
         method: 'post',
         payload: {
-          sUserid: userId,
-          authKey: apiKey,
-          destNum: receiver,
-          callNum: sender,
-          sendMsg: it.text,
-          sType: 'LMS',
-          sMode: 'Real',
-          sSubject: subject
+          mode: 'send',
+          id: userId,
+          pw: apiKey,
+          title: subject,
+          message: it.text,
+          reqlist: receiver
         },
         muteHttpExceptions: true
       });
       const code = resp.getResponseCode();
       const rawText = (resp.getContentText() || '').trim();
-      const cleanText = rawText.replace(/<[^>]*>/g, '').trim();
-      const resCode = (cleanText.split('|')[0] || '').trim();
-      if (code >= 200 && code < 300 && (resCode === '0000' || resCode === '0' || /^success|^ok/i.test(resCode))) {
-        sentCount++;
+      const cleanText = rawText.replace(':header_stop:', '').trim();
+      const parts = cleanText.split('|');
+      const countNum = Number(parts[0]);
+      if (code >= 200 && code < 300 && countNum > 0) {
+        sentCount += countNum;
       } else {
-        lastError = cleanText || `HTTP ${code}`;
+        lastError = parts[1] || cleanText || `HTTP ${code}`;
       }
     });
     if (sentCount === 0 && lastError) {
-      return { ok: false, error: `문자천국 발송 실패: ${lastError}` };
+      return { ok: false, error: `제이문자 발송 실패: ${lastError}` };
     }
   } else {
     return { ok: false, error: '지원하지 않는 문자 서비스입니다: ' + provider };

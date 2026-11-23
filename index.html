@@ -963,23 +963,23 @@
       <!-- 문자 API 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
         <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">문자 자동발송 API (솔라피 / 알리고 / 문자천국)</label>
+          <label for="sms-provider">문자 자동발송 API (제이문자 / 솔라피 / 알리고)</label>
           <select id="sms-provider" onchange="toggleSmsFields()">
             <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
+            <option value="jmunja">제이문자 (jmunja.com 폰문자)</option>
             <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
             <option value="aligo">알리고 (Aligo)</option>
-            <option value="munjachunguk">문자천국 (skysms)</option>
           </select>
-          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#fbbf24;">⚠️ 문자천국은 해외 IP(구글 Apps Script 서버) 발송을 차단하므로, 차단 해제가 어렵다면 솔라피(Solapi) 사용을 권장합니다.</div>
+          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;">💡 제이문자(폰문자)는 안드로이드 제이문자 앱과 연동해 내 핸드폰 번호로 발송하므로 해외/클라우드 IP 제한 없이 구글 Apps Script에서 바로 사용할 수 있습니다. (제이문자 [API 연동 부가사용료] 옵션 필요)</div>
         </div>
         <div id="sms-fields" style="display:none;">
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
-            <div class="field">
+            <div id="sms-sender-wrap" class="field">
               <label for="sms-sender">발신번호 (숫자만)</label>
               <input id="sms-sender" type="tel" placeholder="01012345678" />
             </div>
             <div class="field">
-              <label for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
+              <label id="sms-apikey-label" for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
               <input id="sms-api-key" type="password" placeholder="변경 시에만 입력" />
             </div>
             <div id="sms-secret-wrap" class="field">
@@ -2122,19 +2122,26 @@
       const provider = document.getElementById('sms-provider').value;
       document.getElementById('sms-fields').style.display = provider === 'none' ? 'none' : 'block';
       document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
-      const needsUserId = provider === 'aligo' || provider === 'munjachunguk';
+      const senderWrap = document.getElementById('sms-sender-wrap');
+      if (senderWrap) senderWrap.style.display = provider === 'jmunja' ? 'none' : 'block';
+      const needsUserId = provider === 'aligo' || provider === 'jmunja';
       document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
       const noteEl = document.getElementById('sms-provider-note');
-      if (noteEl) noteEl.style.display = provider === 'munjachunguk' ? 'block' : 'none';
+      if (noteEl) noteEl.style.display = provider === 'jmunja' ? 'block' : 'none';
       const userIdLabel = document.getElementById('sms-userid-label');
       const userIdInput = document.getElementById('sms-user-id');
+      const apiKeyLabel = document.getElementById('sms-apikey-label');
+      const keyStatus = document.getElementById('sms-key-status');
+      const statusHtml = keyStatus ? ` <span id="sms-key-status" style="color:#34d399;">${keyStatus.textContent}</span>` : '';
       if (userIdLabel && userIdInput) {
-        if (provider === 'munjachunguk') {
-          userIdLabel.textContent = '문자천국 User ID';
-          userIdInput.placeholder = '문자천국 아이디';
+        if (provider === 'jmunja') {
+          userIdLabel.textContent = '제이문자 아이디';
+          userIdInput.placeholder = '제이문자 아이디';
+          if (apiKeyLabel) apiKeyLabel.innerHTML = '제이문자 비밀번호' + statusHtml;
         } else {
           userIdLabel.textContent = '알리고 User ID';
           userIdInput.placeholder = '알리고 아이디';
+          if (apiKeyLabel) apiKeyLabel.innerHTML = 'API Key' + statusHtml;
         }
       }
     }
