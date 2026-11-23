@@ -12,9 +12,20 @@ function onOpen() {
     .createMenu('🎉 추첨 관리')
     .addItem('1. 시트 입력 양식 자동 생성', 'setupSheets')
     .addItem('2. 샘플 데이터 채우기 (테스트용)', 'insertSampleData')
+    .addItem('3. 문자 API 외부연결 권한 승인', 'authorizeExternalRequest')
     .addSeparator()
     .addItem('당첨 기록만 초기화 (재추첨 준비)', 'resetAllDrawsMenu')
     .addToUi();
+}
+
+/**
+ * 문자 API 외부 요청(UrlFetchApp) 권한 승인용 헬퍼
+ */
+function authorizeExternalRequest() {
+  UrlFetchApp.fetch('https://www.skysms.co.kr', { muteHttpExceptions: true });
+  try {
+    SpreadsheetApp.getUi().alert('✅ 외부 문자 API 연결 권한이 승인되었습니다! 이제 웹 앱을 새 버전으로 재배포하거나 바로 테스트하실 수 있습니다.');
+  } catch (e) {}
 }
 
 /**
@@ -815,6 +826,21 @@ function sendWinnersSms(rowIndices) {
 }
 
 function sendSmsMessages_(items) {
+  try {
+    return sendSmsMessagesImpl_(items);
+  } catch (err) {
+    const msg = String((err && err.message) || err || '');
+    if (msg.indexOf('script.external_request') !== -1 || msg.indexOf('UrlFetchApp') !== -1) {
+      return {
+        ok: false,
+        error: '구글시트 [🎉 추첨 관리 > 3. 문자 API 외부연결 권한 승인] 또는 Apps Script에서 authorizeExternalRequest 함수를 1회 실행해 권한을 허용해주세요.'
+      };
+    }
+    return { ok: false, error: msg || '문자 발송 중 오류가 발생했습니다.' };
+  }
+}
+
+function sendSmsMessagesImpl_(items) {
   const props = PropertiesService.getScriptProperties();
   const provider = props.getProperty('SMS_PROVIDER') || 'none';
   const apiKey = props.getProperty('SMS_API_KEY') || '';
