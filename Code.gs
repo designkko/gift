@@ -881,6 +881,7 @@ function sendSmsMessages_(items) {
     });
   } else if (provider === 'munjachunguk') {
     if (!userId) return { ok: false, error: '문자천국 User ID를 입력해주세요.' };
+    const subject = props.getProperty('APP_TITLE') || '2026 내일교회 성탄 선물 추첨';
     let lastError = '';
     items.forEach(it => {
       const receiver = String(it.to || '').replace(/\D/g, '');
@@ -888,21 +889,25 @@ function sendSmsMessages_(items) {
       const resp = UrlFetchApp.fetch('https://www.skysms.co.kr/apiSend/sendApi_UTF8.php', {
         method: 'post',
         payload: {
-          USERID: userId,
-          AUTHKEY: apiKey,
-          DESTNUM: receiver,
-          CALLNUM: sender,
-          TEXT: it.text,
-          TYPE: 'LMS'
+          sUserid: userId,
+          authKey: apiKey,
+          destNum: receiver,
+          callNum: sender,
+          sendMsg: it.text,
+          sType: 'LMS',
+          sMode: 'Real',
+          sSubject: subject
         },
         muteHttpExceptions: true
       });
       const code = resp.getResponseCode();
-      const text = (resp.getContentText() || '').trim();
-      if (code >= 200 && code < 300 && (/^0\b|^success|^ok/i.test(text) || text.split(',')[0].trim() === '0')) {
+      const rawText = (resp.getContentText() || '').trim();
+      const cleanText = rawText.replace(/<[^>]*>/g, '').trim();
+      const resCode = (cleanText.split('|')[0] || '').trim();
+      if (code >= 200 && code < 300 && (resCode === '0000' || resCode === '0' || /^success|^ok/i.test(resCode))) {
         sentCount++;
       } else {
-        lastError = text || `HTTP ${code}`;
+        lastError = cleanText || `HTTP ${code}`;
       }
     });
     if (sentCount === 0 && lastError) {
