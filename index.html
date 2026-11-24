@@ -867,7 +867,7 @@
   <div id="settings-modal" class="modal-backdrop" style="align-items:flex-start; padding-top:20px;">
     <div class="modal" style="max-width:860px; max-height:94vh; overflow-y:auto;">
       <h3>⚙️ 프로그램 설정</h3>
-      <p>타이틀, 효과음, 참여자 마감 및 Firebase 연결 설정을 한 화면에서 관리합니다.</p>
+      <p>타이틀, 효과음, 참여자 마감, Firebase 연결 및 문자 API 설정을 한 화면에서 관리합니다.</p>
 
       <div class="settings-grid">
         <!-- 프로그램 타이틀 & 설명 -->
@@ -957,6 +957,47 @@
         </div>
         <div style="display:flex; justify-content:flex-end;">
           <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 마감 설정 저장</button>
+        </div>
+      </div>
+
+      <!-- 문자 API 설정 -->
+      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label for="sms-provider">문자 자동발송 API (솔라피 / 제이문자 / 알리고)</label>
+          <select id="sms-provider" onchange="toggleSmsFields()">
+            <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
+            <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
+            <option value="jmunja">제이문자 (jmunja.com 폰문자)</option>
+            <option value="aligo">알리고 (Aligo)</option>
+          </select>
+          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;"></div>
+        </div>
+        <div id="sms-fields" style="display:none;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
+            <div id="sms-sender-wrap" class="field">
+              <label for="sms-sender">발신번호 (숫자만)</label>
+              <input id="sms-sender" type="tel" placeholder="01012345678" />
+            </div>
+            <div class="field">
+              <label id="sms-apikey-label" for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
+              <input id="sms-api-key" type="password" placeholder="변경 시에만 입력" />
+            </div>
+            <div id="sms-secret-wrap" class="field">
+              <label for="sms-api-secret">API Secret (솔라피) <span id="sms-secret-status" style="color:#34d399;"></span></label>
+              <input id="sms-api-secret" type="password" placeholder="변경 시에만 입력" />
+            </div>
+            <div id="sms-userid-wrap" class="field" style="display:none;">
+              <label id="sms-userid-label" for="sms-user-id">User ID</label>
+              <input id="sms-user-id" type="text" placeholder="아이디" />
+            </div>
+          </div>
+          <label class="toggle-label" style="margin:4px 0 10px;">
+            <input type="checkbox" id="sms-auto-send" />
+            추첨 완료 즉시 당첨자에게 자동 문자 발송
+          </label>
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveSmsConfigForm()">💾 문자 API 저장</button>
         </div>
       </div>
 
@@ -2073,6 +2114,18 @@
           }
           playFanfare();
           launchConfetti();
+          const smsCfg = loadSmsConfig();
+          if (smsCfg.autoSend && smsCfg.provider !== 'none' && picked.length > 0) {
+            sendWinnersSmsDirect(picked, prize.name).then(smsRes => {
+              if (smsRes.ok) {
+                showToast(smsRes.unverified
+                  ? `📩 ${smsRes.sentCount}명에게 문자 발송 요청을 보냈습니다.`
+                  : `📩 ${smsRes.sentCount}명에게 당첨 문자가 자동 발송되었습니다!`);
+              } else {
+                showToast('⚠️ 문자 자동발송 실패: ' + smsRes.error);
+              }
+            });
+          }
         }
       } catch (err) {
         clearInterval(animTimer);
@@ -2341,6 +2394,179 @@
       return `sms:${phoneDigits}${isIOS ? '&' : '?'}body=${encodeURIComponent(msg)}`;
     }
 
+    const STORAGE_KEY_SMS = 'raffle_sms_config';
+
+    function loadSmsConfig() {
+      try {
+        const raw = JSON.parse(safeStorageGet(STORAGE_KEY_SMS) || '{}');
+        return {
+          provider: raw.provider || 'none',
+          sender: raw.sender || '',
+          apiKey: raw.apiKey || '',
+          apiSecret: raw.apiSecret || '',
+          userId: raw.userId || '',
+          autoSend: !!raw.autoSend
+        };
+      } catch (e) {
+        return { provider: 'none', sender: '', apiKey: '', apiSecret: '', userId: '', autoSend: false };
+      }
+    }
+
+    function toggleSmsFields() {
+      const provider = document.getElementById('sms-provider').value;
+      document.getElementById('sms-fields').style.display = provider === 'none' ? 'none' : 'block';
+      document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
+      const senderWrap = document.getElementById('sms-sender-wrap');
+      if (senderWrap) senderWrap.style.display = provider === 'jmunja' ? 'none' : 'block';
+      const needsUserId = provider === 'aligo' || provider === 'jmunja';
+      document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
+      const noteEl = document.getElementById('sms-provider-note');
+      if (noteEl) {
+        if (provider === 'solapi') {
+          noteEl.style.display = 'block';
+          noteEl.textContent = '💡 솔라피 콘솔 [API Key - 보안]에 현재 PC의 공인 IP를 허용 IP로 등록하면 브라우저에서 바로 발송됩니다.';
+        } else if (provider === 'jmunja') {
+          noteEl.style.display = 'block';
+          noteEl.textContent = '💡 제이문자(폰문자)는 안드로이드 제이문자 앱과 연동해 내 핸드폰 번호로 발송합니다. (API 연동 부가사용료 옵션 필요)';
+        } else {
+          noteEl.style.display = 'none';
+        }
+      }
+      const userIdLabel = document.getElementById('sms-userid-label');
+      const userIdInput = document.getElementById('sms-user-id');
+      const apiKeyLabel = document.getElementById('sms-apikey-label');
+      const keyStatus = document.getElementById('sms-key-status');
+      const statusHtml = keyStatus ? ` <span id="sms-key-status" style="color:#34d399;">${keyStatus.textContent}</span>` : '';
+      if (userIdLabel && userIdInput) {
+        if (provider === 'jmunja') {
+          userIdLabel.textContent = '제이문자 아이디';
+          userIdInput.placeholder = '제이문자 아이디';
+          if (apiKeyLabel) apiKeyLabel.innerHTML = '제이문자 비밀번호' + statusHtml;
+        } else {
+          userIdLabel.textContent = '알리고 User ID';
+          userIdInput.placeholder = '알리고 아이디';
+          if (apiKeyLabel) apiKeyLabel.innerHTML = 'API Key' + statusHtml;
+        }
+      }
+    }
+
+    function saveSmsConfigForm() {
+      const prev = loadSmsConfig();
+      const apiKeyInput = document.getElementById('sms-api-key').value.trim();
+      const apiSecretInput = document.getElementById('sms-api-secret').value.trim();
+      const config = {
+        provider: document.getElementById('sms-provider').value,
+        sender: document.getElementById('sms-sender').value.replace(/\D/g, ''),
+        apiKey: apiKeyInput || prev.apiKey,
+        apiSecret: apiSecretInput || prev.apiSecret,
+        userId: document.getElementById('sms-user-id').value.trim(),
+        autoSend: document.getElementById('sms-auto-send').checked
+      };
+      safeStorageSet(STORAGE_KEY_SMS, JSON.stringify(config));
+      document.getElementById('sms-key-status').textContent = config.apiKey ? '(저장됨)' : '';
+      document.getElementById('sms-secret-status').textContent = config.apiSecret ? '(저장됨)' : '';
+      document.getElementById('sms-api-key').value = '';
+      document.getElementById('sms-api-secret').value = '';
+      showToast('✅ 문자 API 설정이 이 브라우저에 저장되었습니다.');
+    }
+
+    async function hmacSha256Hex(secret, message) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function sendWinnersSmsDirect(pickedList, prizeName) {
+      const cfg = loadSmsConfig();
+      if (!cfg.provider || cfg.provider === 'none') {
+        return { ok: false, error: '문자 API가 설정되지 않았습니다.' };
+      }
+      if (!cfg.apiKey || (cfg.provider !== 'jmunja' && !cfg.sender)) {
+        return { ok: false, error: 'API Key(비밀번호)와 발신번호를 입력해주세요.' };
+      }
+      const appTitle = state.appTitle || '2026 내일교회 성탄 선물 추첨';
+      const items = pickedList.map(p => ({
+        to: String(p.phone || '').replace(/\D/g, ''),
+        text: `[${appTitle}]\n${p.name}님, '${prizeName || p.prize}' 당첨을 축하드립니다!\n당첨확인 문자를 가지고 선물수령처에 오셔서 수령하세요.`
+      })).filter(m => m.to.length >= 10);
+      if (items.length === 0) return { ok: false, error: '유효한 수신 번호가 없습니다.' };
+
+      try {
+        if (cfg.provider === 'solapi') {
+          if (!cfg.apiSecret) return { ok: false, error: '솔라피 API Secret을 입력해주세요.' };
+          const date = new Date().toISOString();
+          const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+          const signature = await hmacSha256Hex(cfg.apiSecret, date + salt);
+          const messages = items.map(it => ({ to: it.to, from: cfg.sender, text: it.text }));
+          const resp = await fetch('https://api.solapi.com/messages/v4/send-many/detail', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `HMAC-SHA256 apiKey=${cfg.apiKey}, date=${date}, salt=${salt}, signature=${signature}`
+            },
+            body: JSON.stringify({ messages })
+          });
+          const body = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            return { ok: false, error: body.errorMessage || body.message || `솔라피 오류 (${resp.status})` };
+          }
+          return { ok: true, sentCount: messages.length };
+        }
+
+        if (cfg.provider === 'jmunja') {
+          if (!cfg.userId) return { ok: false, error: '제이문자 아이디를 입력해주세요.' };
+          for (const it of items) {
+            const params = new URLSearchParams({
+              mode: 'send',
+              id: cfg.userId,
+              pw: cfg.apiKey,
+              title: appTitle,
+              message: it.text,
+              reqlist: it.to
+            });
+            await fetch('https://jmunja.com/sms/app/api.php', {
+              method: 'POST',
+              mode: 'no-cors',
+              body: params
+            });
+          }
+          return { ok: true, sentCount: items.length, unverified: true };
+        }
+
+        if (cfg.provider === 'aligo') {
+          if (!cfg.userId) return { ok: false, error: '알리고 User ID를 입력해주세요.' };
+          for (const it of items) {
+            const params = new URLSearchParams({
+              key: cfg.apiKey,
+              user_id: cfg.userId,
+              sender: cfg.sender,
+              receiver: it.to,
+              msg: it.text,
+              msg_type: 'LMS',
+              title: appTitle
+            });
+            await fetch('https://apis.aligo.in/send/', {
+              method: 'POST',
+              mode: 'no-cors',
+              body: params
+            });
+          }
+          return { ok: true, sentCount: items.length, unverified: true };
+        }
+
+        return { ok: false, error: '지원하지 않는 문자 서비스입니다.' };
+      } catch (err) {
+        return { ok: false, error: err.message || '문자 발송 중 오류가 발생했습니다.' };
+      }
+    }
+
     async function handleToggleReceived(rowIndex, received) {
       const target = state.winners.find(w => String(w.rowIndex) === String(rowIndex));
       const prev = target ? target.received : !received;
@@ -2451,6 +2677,16 @@
       const subEl = document.getElementById('app-main-subtitle');
       if (subInput && subEl) subInput.value = state.appSubtitle || subEl.textContent.trim();
       document.getElementById('fb-url-input').value = getFbUrl();
+      const smsCfg = loadSmsConfig();
+      document.getElementById('sms-provider').value = smsCfg.provider || 'none';
+      document.getElementById('sms-sender').value = smsCfg.sender || '';
+      document.getElementById('sms-user-id').value = smsCfg.userId || '';
+      document.getElementById('sms-auto-send').checked = !!smsCfg.autoSend;
+      document.getElementById('sms-key-status').textContent = smsCfg.apiKey ? '(저장됨)' : '';
+      document.getElementById('sms-secret-status').textContent = smsCfg.apiSecret ? '(저장됨)' : '';
+      document.getElementById('sms-api-key').value = '';
+      document.getElementById('sms-api-secret').value = '';
+      toggleSmsFields();
       document.getElementById('settings-modal').classList.add('open');
     }
     async function copyPageLink(fileName, label) {
