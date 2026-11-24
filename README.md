@@ -94,9 +94,21 @@ Firebase Realtime Database와 실시간으로 연동되는 웹 기반 성탄 선
 
 ---
 
-## 6️⃣ Firebase Realtime Database 연결 안내
+## 6️⃣ Firebase 사이트 및 Realtime Database 등록 안내
 
-1. [Firebase 콘솔](https://console.firebase.google.com)에서 구글 계정으로 로그인 후 프로젝트를 생성합니다.
-2. 왼쪽 메뉴 **`빌드` → `Realtime Database`** → **데이터베이스 만들기**를 누르고 위치를 선택합니다.
-3. 테스트/행사 운영용 규칙(`.read: true`, `.write: true`)을 설정한 뒤 상단의 데이터베이스 URL(예: `https://...-default-rtdb.asia-southeast1.firebasedatabase.app`)을 복사합니다.
-4. 웹 페이지 상단 **`⚙️ 설정`** → **`Firebase Realtime Database URL`**에 붙여넣고 **`💾 연결 저장`**을 누르면 바로 실시간 연동됩니다.
+- **Firebase 콘솔 사이트**: https://console.firebase.google.com *(구글 계정으로 무료 생성 가능)*
+
+### 처음 연결하는 방법 (약 3분)
+1. **프로젝트 만들기**: [Firebase 콘솔](https://console.firebase.google.com)에 구글 계정으로 로그인한 뒤 **`프로젝트 추가`**를 눌러 행사 이름으로 새 프로젝트를 만듭니다. *(Google 애널리틱스는 꺼두셔도 됩니다.)*
+2. **Realtime Database 생성**: 왼쪽 메뉴 **`빌드` → `Realtime Database`** → **`데이터베이스 만들기`**를 클릭합니다.
+   - 위치는 **싱가포르(`asia-southeast1`)** 등 가까운 지역을 선택하고, 보안 규칙은 **`테스트 모드에서 시작`**을 선택한 뒤 **`사용 설정`**을 누릅니다.
+3. **규칙 확인 (`규칙` 탭)**: 행사 중 참여자·수령처 접속이 가능하도록 아래와 같이 `.read`, `.write`가 `true`로 되어 있는지 확인합니다. *(행사 종료 후에는 `false`로 변경해 접근을 잠글 수 있습니다.)*
+   ```json
+   {
+     "rules": {
+       ".read": true,
+       ".write": true
+     }
+   }
+   ```
+4. **URL 복사 및 프로그램 연결**: **`데이터` 탭** 상단의 데이터베이스 URL(예: `https://xxx-default-rtdb.asia-southeast1.firebasedatabase.app`)을 복사해, 추첨 프로그램 **`⚙️ 설정`** → **`Firebase Realtime Database URL`**에 붙여넣고 **`💾 연결 저장`**을 누르면 바로 실시간 연동됩니다.
