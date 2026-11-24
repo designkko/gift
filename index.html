@@ -963,11 +963,11 @@
       <!-- 문자 API 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
         <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">문자 자동발송 API (솔라피 / 제이문자 / 알리고)</label>
+          <label for="sms-provider">문자 자동발송 API (솔라피 / 문자천국 / 알리고)</label>
           <select id="sms-provider" onchange="toggleSmsFields()">
             <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
             <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
-            <option value="jmunja">제이문자 (jmunja.com 폰문자)</option>
+            <option value="munjachunguk">문자천국 (skysms)</option>
             <option value="aligo">알리고 (Aligo)</option>
           </select>
           <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;"></div>
@@ -2419,17 +2419,17 @@
       document.getElementById('sms-fields').style.display = provider === 'none' ? 'none' : 'block';
       document.getElementById('sms-secret-wrap').style.display = provider === 'solapi' ? 'block' : 'none';
       const senderWrap = document.getElementById('sms-sender-wrap');
-      if (senderWrap) senderWrap.style.display = provider === 'jmunja' ? 'none' : 'block';
-      const needsUserId = provider === 'aligo' || provider === 'jmunja';
+      if (senderWrap) senderWrap.style.display = 'block';
+      const needsUserId = provider === 'aligo' || provider === 'munjachunguk';
       document.getElementById('sms-userid-wrap').style.display = needsUserId ? 'block' : 'none';
       const noteEl = document.getElementById('sms-provider-note');
       if (noteEl) {
         if (provider === 'solapi') {
           noteEl.style.display = 'block';
           noteEl.textContent = '💡 솔라피 콘솔 [API Key - 보안]에 현재 PC의 공인 IP를 허용 IP로 등록하면 브라우저에서 바로 발송됩니다.';
-        } else if (provider === 'jmunja') {
+        } else if (provider === 'munjachunguk') {
           noteEl.style.display = 'block';
-          noteEl.textContent = '💡 제이문자(폰문자)는 안드로이드 제이문자 앱과 연동해 내 핸드폰 번호로 발송합니다. (API 연동 부가사용료 옵션 필요)';
+          noteEl.textContent = '💡 문자천국 사이트에 사전 등록된 발신번호와 인증키(API Key), 아이디를 입력해 주세요. (국내 PC 브라우저에서 직접 요청)';
         } else {
           noteEl.style.display = 'none';
         }
@@ -2440,10 +2440,10 @@
       const keyStatus = document.getElementById('sms-key-status');
       const statusHtml = keyStatus ? ` <span id="sms-key-status" style="color:#34d399;">${keyStatus.textContent}</span>` : '';
       if (userIdLabel && userIdInput) {
-        if (provider === 'jmunja') {
-          userIdLabel.textContent = '제이문자 아이디';
-          userIdInput.placeholder = '제이문자 아이디';
-          if (apiKeyLabel) apiKeyLabel.innerHTML = '제이문자 비밀번호' + statusHtml;
+        if (provider === 'munjachunguk') {
+          userIdLabel.textContent = '문자천국 아이디';
+          userIdInput.placeholder = '문자천국 아이디';
+          if (apiKeyLabel) apiKeyLabel.innerHTML = '인증키 (API Key)' + statusHtml;
         } else {
           userIdLabel.textContent = '알리고 User ID';
           userIdInput.placeholder = '알리고 아이디';
@@ -2490,8 +2490,8 @@
       if (!cfg.provider || cfg.provider === 'none') {
         return { ok: false, error: '문자 API가 설정되지 않았습니다.' };
       }
-      if (!cfg.apiKey || (cfg.provider !== 'jmunja' && !cfg.sender)) {
-        return { ok: false, error: 'API Key(비밀번호)와 발신번호를 입력해주세요.' };
+      if (!cfg.apiKey || !cfg.sender) {
+        return { ok: false, error: 'API Key(인증키)와 발신번호를 입력해주세요.' };
       }
       const appTitle = state.appTitle || '2026 내일교회 성탄 선물 추첨';
       const fitSms90Bytes = (str, maxBytes = 88) => {
@@ -2533,18 +2533,19 @@
           return { ok: true, sentCount: messages.length };
         }
 
-        if (cfg.provider === 'jmunja') {
-          if (!cfg.userId) return { ok: false, error: '제이문자 아이디를 입력해주세요.' };
+        if (cfg.provider === 'munjachunguk') {
+          if (!cfg.userId) return { ok: false, error: '문자천국 아이디를 입력해주세요.' };
           for (const it of items) {
             const params = new URLSearchParams({
-              mode: 'send',
-              id: cfg.userId,
-              pw: cfg.apiKey,
-              title: appTitle,
-              message: it.text,
-              reqlist: it.to
+              sUserid: cfg.userId,
+              authKey: cfg.apiKey,
+              destNum: it.to,
+              callNum: cfg.sender,
+              sendMsg: it.text,
+              sType: 'SMS',
+              sMode: 'Real'
             });
-            await fetch('https://jmunja.com/sms/app/api.php', {
+            await fetch('https://www.skysms.co.kr/apiSend/sendApi_UTF8.php', {
               method: 'POST',
               mode: 'no-cors',
               body: params
