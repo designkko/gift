@@ -937,26 +937,35 @@
         </div>
       </div>
 
-      <!-- 참여자 마감 설정 -->
+      <!-- 참여자 시작 · 마감 설정 -->
       <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
-        <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">참여자 마감 설정</div>
-        <div style="display:grid; grid-template-columns:1fr 1.6fr; gap:10px; margin-bottom:10px;">
+        <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">참여자 시작 · 마감 설정</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px; margin-bottom:10px;">
           <div class="field">
-            <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
-            <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
+            <label for="setting-reg-start-date">시작 날짜 / 시간 (비우면 즉시 시작)</label>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <input id="setting-reg-start-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
+              <select id="setting-reg-start-hour" style="width:74px; padding:9px 6px;"></select>
+              <select id="setting-reg-start-minute" style="width:74px; padding:9px 6px;"></select>
+              <button type="button" class="btn btn-ghost btn-sm" title="시작 날짜 초기화" onclick="clearRegStartInput()">✕</button>
+            </div>
           </div>
           <div class="field">
             <label for="setting-reg-deadline-date">마감 날짜 / 시간 (비우면 제한 없음)</label>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-              <input id="setting-reg-deadline-date" type="date" style="color-scheme:dark; flex:1; min-width:135px;" />
-              <select id="setting-reg-deadline-hour" style="width:76px; padding:9px 6px;"></select>
-              <select id="setting-reg-deadline-minute" style="width:76px; padding:9px 6px;"></select>
+              <input id="setting-reg-deadline-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
+              <select id="setting-reg-deadline-hour" style="width:74px; padding:9px 6px;"></select>
+              <select id="setting-reg-deadline-minute" style="width:74px; padding:9px 6px;"></select>
               <button type="button" class="btn btn-ghost btn-sm" title="마감 날짜 초기화" onclick="clearRegDeadlineInput()">✕</button>
             </div>
           </div>
         </div>
-        <div style="display:flex; justify-content:flex-end;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 마감 설정 저장</button>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="margin:0; min-width:200px; flex:1; max-width:260px;">
+            <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
+            <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 시작·마감 설정 저장</button>
         </div>
       </div>
 
@@ -1333,6 +1342,7 @@
         ok: true,
         appTitle: settings.appTitle || '🎄 2026 내일교회 성탄 선물 추첨',
         appSubtitle: settings.appSubtitle || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.',
+        regStartTime: settings.regStartTime || '',
         regMaxCount: Math.max(0, Number(settings.regMaxCount) || 0),
         regDeadline: settings.regDeadline || '',
         participants,
@@ -1351,6 +1361,10 @@
 
       if (action === 'addParticipant') {
         const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const startMs = data.regStartTime ? new Date(data.regStartTime).getTime() : NaN;
+        if (!isNaN(startMs) && Date.now() < startMs) {
+          return { ok: false, notStarted: true, error: '참여 신청 기간이 아직 시작되지 않았습니다.' };
+        }
         const deadlineMs = data.regDeadline ? new Date(data.regDeadline).getTime() : NaN;
         if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
           return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
@@ -1513,6 +1527,9 @@
         if (s.regMaxCount !== undefined) {
           patchSettings.regMaxCount = Math.max(0, Number(s.regMaxCount) || 0);
         }
+        if (s.regStartTime !== undefined) {
+          patchSettings.regStartTime = String(s.regStartTime || '').trim();
+        }
         if (s.regDeadline !== undefined) {
           patchSettings.regDeadline = String(s.regDeadline || '').trim();
         }
@@ -1615,6 +1632,10 @@
         return { ok: true, ...db };
       }
       if (action === 'addParticipant') {
+        const startMs = db.regStartTime ? new Date(db.regStartTime).getTime() : NaN;
+        if (!isNaN(startMs) && Date.now() < startMs) {
+          return { ok: false, notStarted: true, error: '참여 신청 기간이 아직 시작되지 않았습니다.' };
+        }
         const deadlineMs = db.regDeadline ? new Date(db.regDeadline).getTime() : NaN;
         if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
           return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
@@ -1756,6 +1777,9 @@
         if (s.regMaxCount !== undefined) {
           db.regMaxCount = Math.max(0, Number(s.regMaxCount) || 0);
         }
+        if (s.regStartTime !== undefined) {
+          db.regStartTime = String(s.regStartTime || '').trim();
+        }
         if (s.regDeadline !== undefined) {
           db.regDeadline = String(s.regDeadline || '').trim();
         }
@@ -1765,6 +1789,7 @@
           appTitle: db.appTitle,
           appSubtitle: db.appSubtitle,
           regLimitEnabled: !!db.regLimitEnabled,
+          regStartTime: db.regStartTime || '',
           regMaxCount: Number(db.regMaxCount) || 0,
           regDeadline: db.regDeadline || '',
           data: db
@@ -1824,13 +1849,26 @@
       let localRegLimit = {};
       try { localRegLimit = JSON.parse(safeStorageGet('raffle_reg_limit_config') || '{}'); } catch (e) {}
       state.regLimitEnabled = payload.regLimitEnabled !== undefined ? !!payload.regLimitEnabled : !!localRegLimit.regLimitEnabled;
+      state.regStartTime = payload.regStartTime !== undefined ? String(payload.regStartTime || '') : String(localRegLimit.regStartTime || '');
       state.regMaxCount = payload.regMaxCount !== undefined ? Math.max(0, Number(payload.regMaxCount) || 0) : Math.max(0, Number(localRegLimit.regMaxCount) || 0);
       state.regDeadline = payload.regDeadline !== undefined ? String(payload.regDeadline || '') : String(localRegLimit.regDeadline || '');
       const limitMaxEl = document.getElementById('setting-reg-max-count');
+      const startDateEl = document.getElementById('setting-reg-start-date');
+      const startHourEl = document.getElementById('setting-reg-start-hour');
+      const startMinEl = document.getElementById('setting-reg-start-minute');
       const limitDateEl = document.getElementById('setting-reg-deadline-date');
       const limitHourEl = document.getElementById('setting-reg-deadline-hour');
       const limitMinEl = document.getElementById('setting-reg-deadline-minute');
       if (limitMaxEl && document.activeElement !== limitMaxEl) limitMaxEl.value = state.regMaxCount > 0 ? state.regMaxCount : '';
+      if (startDateEl && document.activeElement !== startDateEl && document.activeElement !== startHourEl && document.activeElement !== startMinEl) {
+        const [sDate, sTime] = (state.regStartTime || '').split('T');
+        startDateEl.value = sDate || '';
+        if (sTime && startHourEl && startMinEl) {
+          const [sh, sm] = sTime.split(':');
+          if (sh) startHourEl.value = sh.padStart(2, '0');
+          if (sm) startMinEl.value = String(Math.floor((Number(sm) || 0) / 5) * 5).padStart(2, '0');
+        }
+      }
       if (limitDateEl && document.activeElement !== limitDateEl && document.activeElement !== limitHourEl && document.activeElement !== limitMinEl) {
         const [dPart, tPart] = (state.regDeadline || '').split('T');
         limitDateEl.value = dPart || '';
@@ -2287,23 +2325,32 @@
     }
 
     (function initRegDeadlineSelects() {
-      const hourEl = document.getElementById('setting-reg-deadline-hour');
-      const minEl = document.getElementById('setting-reg-deadline-minute');
-      if (hourEl && hourEl.options.length === 0) {
-        for (let h = 0; h < 24; h++) {
-          const v = String(h).padStart(2, '0');
-          hourEl.add(new Option(`${v}시`, v));
+      const populateTimeSelects = (hourId, minId, defaultHour) => {
+        const hourEl = document.getElementById(hourId);
+        const minEl = document.getElementById(minId);
+        if (hourEl && hourEl.options.length === 0) {
+          for (let h = 0; h < 24; h++) {
+            const v = String(h).padStart(2, '0');
+            hourEl.add(new Option(`${v}시`, v));
+          }
+          hourEl.value = defaultHour;
         }
-        hourEl.value = '18';
-      }
-      if (minEl && minEl.options.length === 0) {
-        for (let m = 0; m < 60; m += 5) {
-          const v = String(m).padStart(2, '0');
-          minEl.add(new Option(`${v}분`, v));
+        if (minEl && minEl.options.length === 0) {
+          for (let m = 0; m < 60; m += 5) {
+            const v = String(m).padStart(2, '0');
+            minEl.add(new Option(`${v}분`, v));
+          }
+          minEl.value = '00';
         }
-        minEl.value = '00';
-      }
+      };
+      populateTimeSelects('setting-reg-start-hour', 'setting-reg-start-minute', '09');
+      populateTimeSelects('setting-reg-deadline-hour', 'setting-reg-deadline-minute', '18');
     })();
+
+    function clearRegStartInput() {
+      const dateEl = document.getElementById('setting-reg-start-date');
+      if (dateEl) dateEl.value = '';
+    }
 
     function clearRegDeadlineInput() {
       const dateEl = document.getElementById('setting-reg-deadline-date');
@@ -2312,20 +2359,24 @@
 
     async function saveRegLimitSetting() {
       const regMaxCount = Math.max(0, Number(document.getElementById('setting-reg-max-count').value) || 0);
+      const startDateVal = (document.getElementById('setting-reg-start-date').value || '').trim();
+      const startHourVal = (document.getElementById('setting-reg-start-hour').value || '09').padStart(2, '0');
+      const startMinVal = (document.getElementById('setting-reg-start-minute').value || '00').padStart(2, '0');
+      const regStartTime = startDateVal ? `${startDateVal}T${startHourVal}:${startMinVal}` : '';
       const dateVal = (document.getElementById('setting-reg-deadline-date').value || '').trim();
       const hourVal = (document.getElementById('setting-reg-deadline-hour').value || '18').padStart(2, '0');
       const minVal = (document.getElementById('setting-reg-deadline-minute').value || '00').padStart(2, '0');
       const regDeadline = dateVal ? `${dateVal}T${hourVal}:${minVal}` : '';
-      const regLimitEnabled = regMaxCount > 0 || !!regDeadline;
-      safeStorageSet('raffle_reg_limit_config', JSON.stringify({ regLimitEnabled, regMaxCount, regDeadline }));
-      applyState({ data: { ...state, regLimitEnabled, regMaxCount, regDeadline } });
+      const regLimitEnabled = regMaxCount > 0 || !!regDeadline || !!regStartTime;
+      safeStorageSet('raffle_reg_limit_config', JSON.stringify({ regLimitEnabled, regStartTime, regMaxCount, regDeadline }));
+      applyState({ data: { ...state, regLimitEnabled, regStartTime, regMaxCount, regDeadline } });
       try {
-        const res = await callBackend('saveAppSettings', { settings: { regLimitEnabled, regMaxCount, regDeadline } });
+        const res = await callBackend('saveAppSettings', { settings: { regLimitEnabled, regStartTime, regMaxCount, regDeadline } });
         if (!res.ok) return showToast('❌ ' + res.error);
         applyState(res);
-        showToast('✅ 참여자 마감 설정이 저장되었습니다.');
+        showToast('✅ 참여자 시작·마감 설정이 저장되었습니다.');
       } catch (err) {
-        showToast('✅ 이 기기에 참여자 마감 설정이 저장되었습니다.');
+        showToast('✅ 이 기기에 참여자 시작·마감 설정이 저장되었습니다.');
       }
     }
 

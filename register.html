@@ -192,8 +192,8 @@
     </div>
 
     <div id="closed-box" class="success-box">
-      <div class="success-icon">⛔</div>
-      <div class="success-title">마감 되었습니다.</div>
+      <div id="closed-icon" class="success-icon">⛔</div>
+      <div id="closed-title" class="success-title">마감 되었습니다.</div>
       <p id="closed-reason" style="font-size:0.92rem; color:var(--text-muted); margin-top:6px;">참여자 등록이 마감되어 더 이상 신청할 수 없습니다.</p>
     </div>
   </div>
@@ -247,27 +247,46 @@
       if (h1) h1.textContent = clean.endsWith('등록') ? clean : `${clean} 등록`;
     }
 
-    let regLimitState = { enabled: false, maxCount: 0, deadline: '', currentCount: 0 };
+    let regLimitState = { enabled: false, startTime: '', maxCount: 0, deadline: '', currentCount: 0 };
 
-    function showClosedBox(reason) {
+    function showClosedBox(reason, icon = '⛔', title = '마감 되었습니다.') {
       document.getElementById('reg-form').style.display = 'none';
       document.getElementById('success-box').classList.remove('open');
+      const iconEl = document.getElementById('closed-icon');
+      const titleEl = document.getElementById('closed-title');
       const reasonEl = document.getElementById('closed-reason');
+      if (iconEl) iconEl.textContent = icon;
+      if (titleEl) titleEl.textContent = title;
       if (reasonEl && reason) reasonEl.textContent = reason;
       document.getElementById('closed-box').classList.add('open');
     }
 
     function checkRegistrationClosed() {
+      if (regLimitState.startTime) {
+        const startMs = new Date(regLimitState.startTime).getTime();
+        if (!isNaN(startMs) && Date.now() < startMs) {
+          const formattedStart = regLimitState.startTime.replace('T', ' ');
+          showClosedBox(`${formattedStart} 부터 참여 등록이 가능합니다.`, '⏳', '참여 시작 전입니다.');
+          return true;
+        }
+      }
       if (regLimitState.deadline) {
         const deadlineMs = new Date(regLimitState.deadline).getTime();
         if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
-          showClosedBox('마감 시간이 지나 참여자 등록이 마감되었습니다.');
+          showClosedBox('마감 시간이 지나 참여자 등록이 마감되었습니다.', '⛔', '마감 되었습니다.');
           return true;
         }
       }
       if (regLimitState.maxCount > 0 && regLimitState.currentCount >= regLimitState.maxCount) {
-        showClosedBox('모집 인원이 마감되어 더 이상 신청할 수 없습니다.');
+        showClosedBox('모집 인원이 마감되어 더 이상 신청할 수 없습니다.', '⛔', '마감 되었습니다.');
         return true;
+      }
+      const closedBox = document.getElementById('closed-box');
+      if (closedBox && closedBox.classList.contains('open')) {
+        closedBox.classList.remove('open');
+        if (!document.getElementById('success-box').classList.contains('open')) {
+          document.getElementById('reg-form').style.display = 'block';
+        }
       }
       return false;
     }
@@ -281,6 +300,7 @@
           const demoDb = JSON.parse(safeStorageGet('raffle_demo_state_v2') || '{}');
           regLimitState = {
             enabled: !!localCfg.regLimitEnabled,
+            startTime: localCfg.regStartTime || '',
             maxCount: Number(localCfg.regMaxCount) || 0,
             deadline: localCfg.regDeadline || '',
             currentCount: Array.isArray(demoDb.participants) ? demoDb.participants.length : 0
@@ -305,6 +325,7 @@
           }
           regLimitState = {
             enabled: true,
+            startTime: settings.regStartTime || '',
             maxCount: Number(settings.regMaxCount) || 0,
             deadline: settings.regDeadline || '',
             currentCount: pList.length
@@ -371,6 +392,7 @@
 
         regLimitState = {
           enabled: true,
+          startTime: settings.regStartTime || '',
           maxCount: Number(settings.regMaxCount) || 0,
           deadline: settings.regDeadline || '',
           currentCount: existingList.length
