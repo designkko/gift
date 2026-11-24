@@ -198,13 +198,12 @@
     </div>
   </div>
   <div style="width:100%; max-width:960px; display:flex; justify-content:center; margin-top:auto; padding-top:16px;">
-    <a class="btn btn-ghost" href="qr.html" style="width:auto; padding:8px 14px; font-size:0.86rem; margin-top:0; text-decoration:none;">📱 QR코드 안내 페이지</a>
+    <a id="qr-page-link" class="btn btn-ghost" href="qr.html" style="width:auto; padding:8px 14px; font-size:0.86rem; margin-top:0; text-decoration:none;">📱 QR코드 안내 페이지</a>
   </div>
 
   <script>
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
-    const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
-    let runtimeGasUrl = '';
+    const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
+    let runtimeFbUrl = '';
 
     function safeStorageGet(key) {
       try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
@@ -212,25 +211,33 @@
     function safeStorageSet(key, val) {
       try { localStorage.setItem(key, val); } catch (e) {}
     }
+    function normalizeFbUrl(url) {
+      return String(url || '').trim().replace(/\.json(\?.*)?$/i, '').replace(/\/+$/, '');
+    }
 
-    (function initApiFromQuery() {
+    (function initFbFromQuery() {
       try {
         const params = new URLSearchParams(window.location.search);
-        let apiParam = (params.get('api') || '').trim();
-        if (!apiParam && window.location.hash && window.location.hash.includes('api=')) {
+        let fbParam = (params.get('fb') || params.get('api') || '').trim();
+        if (!fbParam && window.location.hash && (window.location.hash.includes('fb=') || window.location.hash.includes('api='))) {
           const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-          apiParam = (hashParams.get('api') || '').trim();
+          fbParam = (hashParams.get('fb') || hashParams.get('api') || '').trim();
         }
-        if (apiParam) {
-          runtimeGasUrl = apiParam;
-          safeStorageSet(STORAGE_KEY_URL, apiParam);
+        if (fbParam && /firebase(io\.com|database\.app)/i.test(fbParam)) {
+          runtimeFbUrl = normalizeFbUrl(fbParam);
+          safeStorageSet(STORAGE_KEY_FB_URL, runtimeFbUrl);
         }
       } catch (e) {}
     })();
 
-    function getGasUrl() {
-      return runtimeGasUrl || safeStorageGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL;
+    function getFbUrl() {
+      return runtimeFbUrl || normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL));
     }
+    (function updateQrPageLink() {
+      const fbUrl = getFbUrl();
+      const link = document.getElementById('qr-page-link');
+      if (link && fbUrl) link.href = `qr.html?fb=${encodeURIComponent(fbUrl)}`;
+    })();
 
     function applyAppTitle(title) {
       const clean = String(title || '').trim();
@@ -282,20 +289,25 @@
         } catch (e) {}
         if (localTitle) return;
       }
-      fetch(`${getGasUrl()}?action=getData`)
+      const fbUrl = getFbUrl();
+      if (!fbUrl) return;
+      fetch(`${fbUrl}/raffle.json`)
         .then(r => r.json())
-        .then(res => {
-          const payload = (res && res.data) || res || {};
-          const title = payload.appTitle || '';
+        .then(raw => {
+          const root = raw || {};
+          const settings = root.settings || {};
+          const participantsObj = root.participants || {};
+          const pList = Object.keys(participantsObj).filter(k => participantsObj[k]);
+          const title = settings.appTitle || '';
           if (title) {
             safeStorageSet('raffle_app_title', title);
             applyAppTitle(title);
           }
           regLimitState = {
-            enabled: !!payload.regLimitEnabled,
-            maxCount: Number(payload.regMaxCount) || 0,
-            deadline: payload.regDeadline || '',
-            currentCount: Array.isArray(payload.participants) ? payload.participants.length : 0
+            enabled: true,
+            maxCount: Number(settings.regMaxCount) || 0,
+            deadline: settings.regDeadline || '',
+            currentCount: pList.length
           };
           checkRegistrationClosed();
         })
@@ -343,31 +355,59 @@
       btn.textContent = '등록 중...';
 
       try {
-        const res = await fetch(getGasUrl(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'addParticipant', name, phone })
-        });
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error('서버 응답을 확인할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        const fbUrl = getFbUrl();
+        if (!fbUrl) {
+          throw new Error('Firebase 데이터베이스가 연결되지 않았습니다. 관리자 페이지 [⚙️ 설정]에서 연결 링크를 복사해 접속해주세요.');
         }
 
-        if (!data.ok) {
-          if (data.closed || String(data.error || '').includes('마감')) {
-            showClosedBox(data.error || '참여자 등록이 마감되었습니다.');
-            return;
-          }
-          throw new Error(data.error || '등록에 실패했습니다.');
+        const getRes = await fetch(`${fbUrl}/raffle.json`);
+        if (!getRes.ok) throw new Error(`서버 연결 오류 (${getRes.status})`);
+        const root = (await getRes.json()) || {};
+        const settings = root.settings || {};
+        const participantsObj = root.participants || {};
+        const existingList = Object.keys(participantsObj)
+          .filter(k => participantsObj[k])
+          .map(k => participantsObj[k]);
+
+        regLimitState = {
+          enabled: true,
+          maxCount: Number(settings.regMaxCount) || 0,
+          deadline: settings.regDeadline || '',
+          currentCount: existingList.length
+        };
+        if (checkRegistrationClosed()) return;
+
+        const cleanName = name.trim();
+        const digits = phone.replace(/\D/g, '');
+        const cleanPhone = digits.length === 11 && digits.startsWith('010')
+          ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+          : (digits.length === 10 ? `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}` : phone);
+
+        const dup = existingList.find(
+          p => String(p.name || '').trim() === cleanName && String(p.phone || '').replace(/\D/g, '') === digits
+        );
+        if (dup) {
+          throw new Error(`이미 등록된 참여자입니다 (${dup.name} / ${dup.phone}).`);
         }
+
+        const postRes = await fetch(`${fbUrl}/raffle/participants.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            createdAt: new Date().toLocaleString('ko-KR'),
+            name: cleanName,
+            phone: cleanPhone,
+            isWinner: false,
+            prize: '',
+            wonAt: ''
+          })
+        });
+        if (!postRes.ok) throw new Error(`등록 저장 오류 (${postRes.status})`);
 
         regLimitState.currentCount += 1;
 
         document.getElementById('reg-form').style.display = 'none';
-        document.getElementById('success-info').innerHTML = `<strong>${escapeHtml(name)}</strong><br/>${escapeHtml(phone)}`;
+        document.getElementById('success-info').innerHTML = `<strong>${escapeHtml(cleanName)}</strong><br/>${escapeHtml(cleanPhone)}`;
         document.getElementById('success-box').classList.add('open');
       } catch (err) {
         errBox.className = 'alert error';

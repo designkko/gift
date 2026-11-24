@@ -740,7 +740,7 @@
     <section id="tab-participants" class="panel">
       <div class="card">
         <div class="card-title">
-          <span>참여자 등록 (구글시트 '참여자' 시트에 바로 입력)</span>
+          <span>참여자 등록</span>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <a class="btn btn-ghost btn-sm" href="register.html" target="_blank" style="text-decoration:none;">📝 등록 전용 페이지 열기</a>
             <a class="btn btn-ghost btn-sm" href="qr.html" target="_blank" style="text-decoration:none;">📱 QR코드 / PDF</a>
@@ -867,7 +867,7 @@
   <div id="settings-modal" class="modal-backdrop" style="align-items:flex-start; padding-top:20px;">
     <div class="modal" style="max-width:860px; max-height:94vh; overflow-y:auto;">
       <h3>⚙️ 프로그램 설정</h3>
-      <p>타이틀, 효과음, 참여자 마감 및 구글시트 연결 설정을 한 화면에서 관리합니다.</p>
+      <p>타이틀, 효과음, 참여자 마감 및 Firebase 연결 설정을 한 화면에서 관리합니다.</p>
 
       <div class="settings-grid">
         <!-- 프로그램 타이틀 & 설명 -->
@@ -923,14 +923,14 @@
 
           <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; flex:1; display:flex; flex-direction:column; justify-content:space-between;">
             <div class="field" style="margin-bottom:10px;">
-              <label for="gas-url-input">구글시트 웹 앱 URL (Apps Script /exec)</label>
-              <input id="gas-url-input" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+              <label for="fb-url-input">Firebase Realtime Database URL</label>
+              <input id="fb-url-input" type="url" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" />
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
               <button type="button" class="btn btn-ghost btn-sm" onclick="copyShareLink()">📱 핸드폰 연결 링크 복사</button>
               <div style="display:flex; gap:6px; align-items:center;">
                 <button type="button" class="btn btn-ghost btn-sm" onclick="switchToLocalDemo()">🟡 로컬 데모</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveGasUrl()">💾 연결 저장</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveFbUrl()">💾 연결 저장</button>
               </div>
             </div>
           </div>
@@ -970,12 +970,12 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const IS_GAS_HOSTED = typeof google !== 'undefined' && google.script && google.script.run;
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
-    const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
+    const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
     const STORAGE_KEY_DEMO_FORCE = 'raffle_force_demo';
     const STORAGE_KEY_DEMO = 'raffle_demo_state_v2';
-    let runtimeGasUrl = '';
+    let runtimeFbUrl = '';
+    let realtimeSource = null;
+    let realtimeTimer = null;
 
     function safeStorageGet(key) {
       try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
@@ -983,18 +983,22 @@
     function safeStorageSet(key, val) {
       try { localStorage.setItem(key, val); } catch (e) {}
     }
+    function normalizeFbUrl(url) {
+      return String(url || '').trim().replace(/\.json(\?.*)?$/i, '').replace(/\/+$/, '');
+    }
 
-    (function initApiFromQuery() {
+    (function initFbFromQuery() {
       try {
         const params = new URLSearchParams(window.location.search);
-        let apiParam = (params.get('api') || '').trim();
-        if (!apiParam && window.location.hash && window.location.hash.includes('api=')) {
+        let fbParam = (params.get('fb') || params.get('api') || '').trim();
+        if (!fbParam && window.location.hash && (window.location.hash.includes('fb=') || window.location.hash.includes('api='))) {
           const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-          apiParam = (hashParams.get('api') || '').trim();
+          fbParam = (hashParams.get('fb') || hashParams.get('api') || '').trim();
         }
-        if (apiParam) {
-          runtimeGasUrl = apiParam;
-          safeStorageSet(STORAGE_KEY_URL, apiParam);
+        if (fbParam && /firebase(io\.com|database\.app)/i.test(fbParam)) {
+          runtimeFbUrl = normalizeFbUrl(fbParam);
+          safeStorageSet(STORAGE_KEY_FB_URL, runtimeFbUrl);
+          try { localStorage.removeItem(STORAGE_KEY_DEMO_FORCE); } catch (e) {}
         }
       } catch (e) {}
     })();
@@ -1188,16 +1192,16 @@
       });
     });
 
-    function getGasUrl() {
-      if (runtimeGasUrl) return runtimeGasUrl;
+    function getFbUrl() {
+      if (runtimeFbUrl) return normalizeFbUrl(runtimeFbUrl);
       if (safeStorageGet(STORAGE_KEY_DEMO_FORCE) === 'true') return '';
-      return safeStorageGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL || '';
+      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL));
     }
 
     function updateConnectionBadge(hasError = false) {
       const badge = document.getElementById('conn-badge');
       if (hasError) {
-        badge.textContent = '🔴 구글시트 연결 오류';
+        badge.textContent = '🔴 Firebase 연결 오류';
         badge.className = 'badge';
         badge.style.borderColor = 'rgba(239, 68, 68, 0.6)';
         badge.style.color = '#fca5a5';
@@ -1205,11 +1209,8 @@
       }
       badge.style.borderColor = '';
       badge.style.color = '';
-      if (IS_GAS_HOSTED) {
-        badge.textContent = '🟢 구글시트 직접 연동됨';
-        badge.className = 'badge live';
-      } else if (getGasUrl()) {
-        badge.textContent = '🟢 구글시트 API 연동됨';
+      if (getFbUrl()) {
+        badge.textContent = '🟢 Firebase 실시간 연동됨';
         badge.className = 'badge live';
       } else {
         badge.textContent = '🟡 로컬 데모 모드';
@@ -1217,47 +1218,317 @@
       }
     }
 
-    // 백엔드 호출 추상화 (GAS 내장 / GAS 외부 API / 로컬 데모)
-    async function callBackend(action, payload = {}) {
-      if (IS_GAS_HOSTED) {
-        return new Promise((resolve, reject) => {
-          const runner = google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(err => reject(new Error(err.message || 'Apps Script 오류')));
-
-          switch (action) {
-            case 'getData': runner.getAllData(); break;
-            case 'addParticipant': runner.addParticipant(payload.name, payload.phone); break;
-            case 'addParticipantsBulk': runner.addParticipantsBulk(payload.list); break;
-            case 'deleteParticipant': runner.deleteParticipant(payload.rowIndex); break;
-            case 'savePrizes': runner.savePrizes(payload.prizes); break;
-            case 'drawWinners': runner.drawWinners(payload.prizeName, payload.count, payload.prizeRowIndex); break;
-            case 'cancelWinner': runner.cancelWinner(payload.rowIndex); break;
-            case 'toggleWinnerReceived': runner.toggleWinnerReceived(payload.rowIndex, payload.received); break;
-            case 'resetAllDraws': runner.resetAllDraws(); break;
-            case 'saveAppSettings': runner.saveAppSettings(payload.settings); break;
-            default: reject(new Error('지원하지 않는 작업: ' + action));
-          }
-        });
+    async function fbRequest(fbUrl, path, method = 'GET', bodyObj = undefined) {
+      const opts = { method, headers: {} };
+      if (bodyObj !== undefined) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(bodyObj);
       }
-
-      const gasUrl = getGasUrl();
-      if (gasUrl) {
-        const res = action === 'getData'
-          ? await fetch(`${gasUrl}?action=getData`)
-          : await fetch(gasUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ action, ...payload })
-            });
-        const text = await res.text();
+      const res = await fetch(`${fbUrl}/raffle${path}.json`, opts);
+      if (!res.ok) {
+        let detail = '';
         try {
-          return JSON.parse(text);
-        } catch (parseErr) {
-          throw new Error('구글시트 응답 오류: Apps Script 배포 시 액세스 권한을 "모든 사용자"로 설정했는지 확인해주세요.');
-        }
+          const errJson = await res.json();
+          detail = (errJson && errJson.error) || '';
+        } catch (e) {}
+        throw new Error(detail ? `Firebase 오류 (${res.status}): ${detail}` : `Firebase 연결 오류 (${res.status})`);
+      }
+      return res.json();
+    }
+
+    function normalizeFbData(raw) {
+      const root = raw || {};
+      const settings = root.settings || {};
+      const participantsObj = root.participants || {};
+      const participants = Object.keys(participantsObj)
+        .filter(k => participantsObj[k])
+        .map(k => ({
+          id: k,
+          rowIndex: k,
+          createdAt: participantsObj[k].createdAt || '',
+          name: participantsObj[k].name || '',
+          phone: participantsObj[k].phone || '',
+          isWinner: !!participantsObj[k].isWinner,
+          prize: participantsObj[k].prize || '',
+          wonAt: participantsObj[k].wonAt || ''
+        }));
+
+      const rawPrizes = Array.isArray(root.prizes)
+        ? root.prizes
+        : Object.keys(root.prizes || {}).sort((a, b) => Number(a) - Number(b)).map(k => root.prizes[k]);
+      const prizes = rawPrizes.filter(Boolean).map((p, idx) => {
+        const total = Math.max(0, Number(p.total) || 0);
+        const drawn = Math.max(0, Math.min(total, Number(p.drawn) || 0));
+        const remaining = Math.max(0, total - drawn);
+        return {
+          rowIndex: idx + 2,
+          name: p.name || '',
+          total,
+          drawn,
+          remaining,
+          drawCount: Math.max(1, Number(p.drawCount) || remaining || 1),
+          note: p.note || ''
+        };
+      });
+
+      const winnersObj = root.winners || {};
+      const winners = Object.keys(winnersObj)
+        .filter(k => winnersObj[k])
+        .map(k => ({
+          id: k,
+          rowIndex: k,
+          wonAt: winnersObj[k].wonAt || '',
+          prize: winnersObj[k].prize || '',
+          name: winnersObj[k].name || '',
+          phone: winnersObj[k].phone || '',
+          received: !!winnersObj[k].received,
+          participantId: winnersObj[k].participantId || ''
+        }))
+        .reverse();
+
+      return {
+        ok: true,
+        appTitle: settings.appTitle || '🎄 2026 내일교회 성탄 선물 추첨',
+        appSubtitle: settings.appSubtitle || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.',
+        regMaxCount: Math.max(0, Number(settings.regMaxCount) || 0),
+        regDeadline: settings.regDeadline || '',
+        participants,
+        prizes,
+        winners
+      };
+    }
+
+    async function runFirebaseBackend(fbUrl, action, payload = {}) {
+      const nowStr = new Date().toLocaleString('ko-KR');
+
+      if (action === 'getData') {
+        const raw = await fbRequest(fbUrl, '');
+        return normalizeFbData(raw);
       }
 
+      if (action === 'addParticipant') {
+        const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const deadlineMs = data.regDeadline ? new Date(data.regDeadline).getTime() : NaN;
+        if (!isNaN(deadlineMs) && Date.now() >= deadlineMs) {
+          return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+        }
+        if (data.regMaxCount > 0 && data.participants.length >= data.regMaxCount) {
+          return { ok: false, closed: true, error: '참여자 등록이 마감되었습니다.' };
+        }
+        const cleanName = String(payload.name || '').trim();
+        const cleanPhone = normalizePhone(payload.phone);
+        const targetDigits = cleanPhone.replace(/\D/g, '');
+        const dup = data.participants.find(
+          p => p.name.trim() === cleanName && p.phone.replace(/\D/g, '') === targetDigits
+        );
+        if (dup) return { ok: false, error: `이미 등록된 참여자입니다 (${dup.name} / ${dup.phone}).` };
+
+        await fbRequest(fbUrl, '/participants', 'POST', {
+          createdAt: nowStr,
+          name: cleanName,
+          phone: cleanPhone,
+          isWinner: false,
+          prize: '',
+          wonAt: ''
+        });
+        return { ok: true, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'addParticipantsBulk') {
+        const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const existing = new Set(data.participants.map(p => `${p.name.trim()}|${p.phone.replace(/\D/g, '')}`));
+        let added = 0, skipped = 0;
+        const patchMap = {};
+        const baseTs = Date.now();
+        payload.list.forEach((item, idx) => {
+          const n = String(item.name || '').trim();
+          const ph = normalizePhone(item.phone);
+          const digits = ph.replace(/\D/g, '');
+          const key = `${n}|${digits}`;
+          if (!n || !digits || existing.has(key)) { skipped++; return; }
+          existing.add(key);
+          patchMap[`p_${baseTs}_${idx}`] = {
+            createdAt: nowStr,
+            name: n,
+            phone: ph,
+            isWinner: false,
+            prize: '',
+            wonAt: ''
+          };
+          added++;
+        });
+        if (added > 0) {
+          await fbRequest(fbUrl, '/participants', 'PATCH', patchMap);
+        }
+        return { ok: true, added, skipped, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'deleteParticipant') {
+        await fbRequest(fbUrl, `/participants/${encodeURIComponent(payload.rowIndex)}`, 'DELETE');
+        return { ok: true, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'savePrizes') {
+        const prizes = (payload.prizes || [])
+          .filter(p => String(p.name || '').trim())
+          .map(p => {
+            const total = Math.max(0, Number(p.total) || 0);
+            const drawn = Math.max(0, Math.min(total, Number(p.drawn) || 0));
+            return {
+              name: String(p.name).trim(),
+              total,
+              drawn,
+              remaining: total - drawn,
+              drawCount: Math.max(1, Number(p.drawCount) || (total - drawn) || 1),
+              note: p.note || ''
+            };
+          });
+        await fbRequest(fbUrl, '/prizes', 'PUT', prizes);
+        return { ok: true, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'drawWinners') {
+        const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const prizeIdx = data.prizes.findIndex(p =>
+          (payload.prizeRowIndex != null && p.rowIndex === payload.prizeRowIndex) || p.name === payload.prizeName
+        );
+        const prize = prizeIdx >= 0 ? data.prizes[prizeIdx] : null;
+        if (!prize) return { ok: false, error: '상품을 찾을 수 없습니다.' };
+        if (prize.remaining <= 0) return { ok: false, error: '남은 수량이 없습니다.' };
+        const count = Math.min(Math.max(1, Number(payload.count) || 1), prize.remaining);
+        const eligible = data.participants.filter(p => !p.isWinner);
+        if (eligible.length < count) return { ok: false, error: `추첨 가능 인원(${eligible.length}명)이 부족합니다.` };
+
+        const pool = eligible.slice();
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        const picked = pool.slice(0, count);
+        const patchRoot = {};
+        const baseTs = Date.now();
+        picked.forEach((person, idx) => {
+          patchRoot[`participants/${person.rowIndex}/isWinner`] = true;
+          patchRoot[`participants/${person.rowIndex}/prize`] = prize.name;
+          patchRoot[`participants/${person.rowIndex}/wonAt`] = nowStr;
+          patchRoot[`winners/w_${baseTs}_${idx}`] = {
+            wonAt: nowStr,
+            prize: prize.name,
+            name: person.name,
+            phone: person.phone,
+            received: false,
+            participantId: String(person.rowIndex)
+          };
+        });
+        const newDrawn = prize.drawn + picked.length;
+        patchRoot[`prizes/${prizeIdx}/drawn`] = newDrawn;
+        patchRoot[`prizes/${prizeIdx}/remaining`] = prize.total - newDrawn;
+
+        await fbRequest(fbUrl, '', 'PATCH', patchRoot);
+        return { ok: true, picked, prizeName: prize.name, wonAt: nowStr, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'cancelWinner') {
+        const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const person = data.participants.find(p => String(p.rowIndex) === String(payload.rowIndex));
+        if (person && person.isWinner) {
+          const patchRoot = {};
+          const prizeIdx = data.prizes.findIndex(p => p.name === person.prize);
+          if (prizeIdx >= 0 && data.prizes[prizeIdx].drawn > 0) {
+            const newDrawn = data.prizes[prizeIdx].drawn - 1;
+            patchRoot[`prizes/${prizeIdx}/drawn`] = newDrawn;
+            patchRoot[`prizes/${prizeIdx}/remaining`] = data.prizes[prizeIdx].total - newDrawn;
+          }
+          patchRoot[`participants/${person.rowIndex}/isWinner`] = false;
+          patchRoot[`participants/${person.rowIndex}/prize`] = '';
+          patchRoot[`participants/${person.rowIndex}/wonAt`] = '';
+          const matchedWinner = data.winners.find(w =>
+            String(w.participantId) === String(person.rowIndex) || (w.name === person.name && w.phone === person.phone && w.prize === person.prize)
+          );
+          if (matchedWinner) {
+            patchRoot[`winners/${matchedWinner.rowIndex}`] = null;
+          }
+          await fbRequest(fbUrl, '', 'PATCH', patchRoot);
+        }
+        return { ok: true, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      if (action === 'toggleWinnerReceived') {
+        await fbRequest(fbUrl, `/winners/${encodeURIComponent(payload.rowIndex)}`, 'PATCH', { received: !!payload.received });
+        return { ok: true };
+      }
+
+      if (action === 'saveAppSettings') {
+        const s = payload.settings || {};
+        const patchSettings = {};
+        if (s.appTitle !== undefined) {
+          patchSettings.appTitle = String(s.appTitle || '').trim() || '🎄 2026 내일교회 성탄 선물 추첨';
+        }
+        if (s.appSubtitle !== undefined) {
+          patchSettings.appSubtitle = String(s.appSubtitle || '').trim() || '당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다.';
+        }
+        if (s.regMaxCount !== undefined) {
+          patchSettings.regMaxCount = Math.max(0, Number(s.regMaxCount) || 0);
+        }
+        if (s.regDeadline !== undefined) {
+          patchSettings.regDeadline = String(s.regDeadline || '').trim();
+        }
+        await fbRequest(fbUrl, '/settings', 'PATCH', patchSettings);
+        const updated = normalizeFbData(await fbRequest(fbUrl, ''));
+        return { ok: true, ...updated, data: updated };
+      }
+
+      if (action === 'resetAllDraws') {
+        const data = normalizeFbData(await fbRequest(fbUrl, ''));
+        const patchRoot = { winners: null };
+        data.participants.forEach(p => {
+          patchRoot[`participants/${p.rowIndex}/isWinner`] = false;
+          patchRoot[`participants/${p.rowIndex}/prize`] = '';
+          patchRoot[`participants/${p.rowIndex}/wonAt`] = '';
+        });
+        data.prizes.forEach((p, idx) => {
+          patchRoot[`prizes/${idx}/drawn`] = 0;
+          patchRoot[`prizes/${idx}/remaining`] = p.total;
+        });
+        await fbRequest(fbUrl, '', 'PATCH', patchRoot);
+        return { ok: true, data: normalizeFbData(await fbRequest(fbUrl, '')) };
+      }
+
+      return { ok: false, error: '알 수 없는 요청' };
+    }
+
+    function stopRealtimeSync() {
+      if (realtimeSource) {
+        try { realtimeSource.close(); } catch (e) {}
+        realtimeSource = null;
+      }
+      clearTimeout(realtimeTimer);
+    }
+
+    function startRealtimeSync() {
+      stopRealtimeSync();
+      const fbUrl = getFbUrl();
+      if (!fbUrl || typeof EventSource === 'undefined') return;
+      try {
+        realtimeSource = new EventSource(`${fbUrl}/raffle.json`);
+        const scheduleRefresh = () => {
+          if (isDrawing) return;
+          clearTimeout(realtimeTimer);
+          realtimeTimer = setTimeout(() => {
+            if (!isDrawing) refreshData();
+          }, 250);
+        };
+        realtimeSource.addEventListener('put', scheduleRefresh);
+        realtimeSource.addEventListener('patch', scheduleRefresh);
+      } catch (e) {}
+    }
+
+    // 백엔드 호출 추상화 (Firebase / 로컬 데모)
+    async function callBackend(action, payload = {}) {
+      const fbUrl = getFbUrl();
+      if (fbUrl) {
+        return runFirebaseBackend(fbUrl, action, payload);
+      }
       // 로컬 데모 모드
       return runLocalDemo(action, payload);
     }
@@ -1845,8 +2116,8 @@
           <td>${p.prize ? escapeHtml(p.prize) : '-'}</td>
           <td>
             ${p.isWinner
-              ? `<button class="btn btn-ghost btn-sm" onclick="handleCancelWinner(${p.rowIndex})">당첨취소</button>`
-              : `<button class="btn btn-danger btn-sm" onclick="handleDeleteParticipant(${p.rowIndex})">삭제</button>`}
+              ? `<button class="btn btn-ghost btn-sm" onclick="handleCancelWinner('${escapeHtml(String(p.rowIndex))}')">당첨취소</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="handleDeleteParticipant('${escapeHtml(String(p.rowIndex))}')">삭제</button>`}
           </td>
         </tr>
       `).join('');
@@ -2038,7 +2309,7 @@
       }
       tbody.innerHTML = filtered.map((w, idx) => `
         <tr>
-          <td style="color:var(--text-muted);">${w.rowIndex && w.rowIndex < 100000 ? w.rowIndex - 1 : idx + 1}</td>
+          <td style="color:var(--text-muted);">${typeof w.rowIndex === 'number' && w.rowIndex < 100000 ? w.rowIndex - 1 : idx + 1}</td>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
           <td>${escapeHtml(displayName(w.name))}</td>
@@ -2048,7 +2319,7 @@
               <button
                 class="btn btn-sm ${w.received ? 'btn-success' : 'btn-ghost'}"
                 style="min-width:66px;"
-                onclick="handleToggleReceived(${w.rowIndex}, ${!w.received})"
+                onclick="handleToggleReceived('${escapeHtml(String(w.rowIndex))}', ${!w.received})"
               >
                 ${w.received ? '수령' : '미수령'}
               </button>
@@ -2071,7 +2342,7 @@
     }
 
     async function handleToggleReceived(rowIndex, received) {
-      const target = state.winners.find(w => w.rowIndex === rowIndex);
+      const target = state.winners.find(w => String(w.rowIndex) === String(rowIndex));
       const prev = target ? target.received : !received;
       if (target) {
         target.received = received;
@@ -2179,11 +2450,13 @@
       const subInput = document.getElementById('setting-app-subtitle');
       const subEl = document.getElementById('app-main-subtitle');
       if (subInput && subEl) subInput.value = state.appSubtitle || subEl.textContent.trim();
-      document.getElementById('gas-url-input').value = getGasUrl();
+      document.getElementById('fb-url-input').value = getFbUrl();
       document.getElementById('settings-modal').classList.add('open');
     }
     async function copyPageLink(fileName, label) {
-      const base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}${fileName}`;
+      const fbUrl = getFbUrl().trim();
+      let base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}${fileName}`;
+      if (fbUrl) base += `?fb=${encodeURIComponent(fbUrl)}`;
       try {
         await navigator.clipboard.writeText(base);
         showToast(`🔗 ${label} 링크가 복사되었습니다!`);
@@ -2193,9 +2466,9 @@
     }
 
     async function copyRegisterLink() {
-      const gasUrl = getGasUrl().trim();
+      const fbUrl = getFbUrl().trim();
       let base = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
-      if (gasUrl) base += `?api=${encodeURIComponent(gasUrl)}`;
+      if (fbUrl) base += `?fb=${encodeURIComponent(fbUrl)}`;
       try {
         await navigator.clipboard.writeText(base);
         showToast('🔗 참여자 등록 페이지 링크가 복사되었습니다!');
@@ -2205,9 +2478,9 @@
     }
 
     async function copyShareLink() {
-      const url = (document.getElementById('gas-url-input').value || getGasUrl()).trim();
-      if (!url) return showToast('먼저 Apps Script 웹 앱 URL을 입력해주세요.');
-      const shareUrl = `${window.location.origin}${window.location.pathname}?api=${encodeURIComponent(url)}`;
+      const url = normalizeFbUrl(document.getElementById('fb-url-input').value || getFbUrl());
+      if (!url) return showToast('먼저 Firebase Realtime Database URL을 입력해주세요.');
+      const shareUrl = `${window.location.origin}${window.location.pathname}?fb=${encodeURIComponent(url)}`;
       try {
         await navigator.clipboard.writeText(shareUrl);
         showToast('📱 핸드폰 연결 링크가 복사되었습니다! 카톡 등으로 열어보세요.');
@@ -2219,27 +2492,31 @@
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
     async function switchToLocalDemo() {
-      runtimeGasUrl = '';
+      runtimeFbUrl = '';
+      stopRealtimeSync();
       safeStorageSet(STORAGE_KEY_DEMO_FORCE, 'true');
-      document.getElementById('gas-url-input').value = '';
+      document.getElementById('fb-url-input').value = '';
       await refreshData();
       showToast('🟡 로컬 데모 모드로 전환되었습니다.');
     }
 
-    async function saveGasUrl() {
-      const url = document.getElementById('gas-url-input').value.trim();
-      runtimeGasUrl = url;
+    async function saveFbUrl() {
+      const url = normalizeFbUrl(document.getElementById('fb-url-input').value);
+      runtimeFbUrl = url;
+      document.getElementById('fb-url-input').value = url;
       if (url) {
         try { localStorage.removeItem(STORAGE_KEY_DEMO_FORCE); } catch (e) {}
-        safeStorageSet(STORAGE_KEY_URL, url);
+        safeStorageSet(STORAGE_KEY_FB_URL, url);
       } else {
         safeStorageSet(STORAGE_KEY_DEMO_FORCE, 'true');
-        try { localStorage.removeItem(STORAGE_KEY_URL); } catch (e) {}
+        try { localStorage.removeItem(STORAGE_KEY_FB_URL); } catch (e) {}
       }
       const ok = await refreshData();
       if (ok && url) {
-        showToast(`✅ 구글시트 연결 완료! (참여자 ${state.participants.length}명, 상품 ${state.prizes.length}개)`);
+        startRealtimeSync();
+        showToast(`✅ Firebase 연결 완료! (참여자 ${state.participants.length}명, 상품 ${state.prizes.length}개)`);
       } else if (ok && !url) {
+        stopRealtimeSync();
         showToast('🟡 로컬 데모 모드로 전환되었습니다.');
       }
     }
@@ -2298,7 +2575,7 @@
       requestAnimationFrame(tick);
     }
 
-    refreshData();
+    refreshData().then(ok => { if (ok) startRealtimeSync(); });
   </script>
 </body>
 </html>

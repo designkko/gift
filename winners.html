@@ -195,7 +195,7 @@
         <p>당첨자 확인 및 선물 수령 상태를 관리할 수 있습니다.</p>
       </div>
       <div class="status-bar">
-        <span id="conn-badge" class="badge live">🟢 구글시트 연결 중...</span>
+        <span id="conn-badge" class="badge live">🟢 Firebase 연결 중...</span>
         <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
       </div>
     </header>
@@ -248,28 +248,36 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
-    const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
-    let runtimeGasUrl = '';
+    const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
+    let runtimeFbUrl = '';
     let winners = [];
+    let realtimeSource = null;
+    let realtimeTimer = null;
 
     function safeGet(key) {
       try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
     }
+    function normalizeFbUrl(url) {
+      return String(url || '').trim().replace(/\.json(\?.*)?$/i, '').replace(/\/+$/, '');
+    }
 
-    (function initApi() {
+    (function initFb() {
       try {
         const params = new URLSearchParams(window.location.search);
-        const apiParam = (params.get('api') || '').trim();
-        if (apiParam) {
-          runtimeGasUrl = apiParam;
-          try { localStorage.setItem(STORAGE_KEY_URL, apiParam); } catch (e) {}
+        let fbParam = (params.get('fb') || params.get('api') || '').trim();
+        if (!fbParam && window.location.hash && (window.location.hash.includes('fb=') || window.location.hash.includes('api='))) {
+          const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+          fbParam = (hashParams.get('fb') || hashParams.get('api') || '').trim();
+        }
+        if (fbParam && /firebase(io\.com|database\.app)/i.test(fbParam)) {
+          runtimeFbUrl = normalizeFbUrl(fbParam);
+          try { localStorage.setItem(STORAGE_KEY_FB_URL, runtimeFbUrl); } catch (e) {}
         }
       } catch (e) {}
     })();
 
-    function getGasUrl() {
-      return runtimeGasUrl || safeGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL;
+    function getFbUrl() {
+      return runtimeFbUrl || normalizeFbUrl(safeGet(STORAGE_KEY_FB_URL));
     }
 
     let currentAppTitle = safeGet('raffle_app_title') || '🎄 2026 내일교회 성탄 선물 추첨';
@@ -283,35 +291,37 @@
     }
     if (safeGet('raffle_app_title')) applyAppTitle(safeGet('raffle_app_title'));
 
-    async function callGas(action, payload = {}) {
-      const url = getGasUrl();
-      const res = action === 'getData'
-        ? await fetch(`${url}?action=getData`)
-        : await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action, ...payload })
-          });
-      const text = await res.text();
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        throw new Error('구글시트 응답을 해석할 수 없습니다.');
-      }
-    }
-
     async function refreshData() {
       const badge = document.getElementById('conn-badge');
+      const fbUrl = getFbUrl();
+      if (!fbUrl) {
+        badge.textContent = '🔴 연결 설정 필요';
+        badge.className = 'badge err';
+        showToast('Firebase URL이 없습니다. 관리자 [⚙️ 설정]에서 링크를 복사해 접속하세요.');
+        return;
+      }
       try {
-        const res = await callGas('getData');
-        if (!res.ok) throw new Error(res.error);
-        winners = res.winners || [];
-        const serverTitle = res.appTitle || (res.data && res.data.appTitle) || '';
+        const res = await fetch(`${fbUrl}/raffle.json`);
+        if (!res.ok) throw new Error(`Firebase 오류 (${res.status})`);
+        const root = (await res.json()) || {};
+        const winnersObj = root.winners || {};
+        winners = Object.keys(winnersObj)
+          .filter(k => winnersObj[k])
+          .map(k => ({
+            rowIndex: k,
+            wonAt: winnersObj[k].wonAt || '',
+            prize: winnersObj[k].prize || '',
+            name: winnersObj[k].name || '',
+            phone: winnersObj[k].phone || '',
+            received: !!winnersObj[k].received
+          }))
+          .reverse();
+        const serverTitle = (root.settings && root.settings.appTitle) || '';
         if (serverTitle && !(safeGet('raffle_demo_force') === 'true' && safeGet('raffle_app_title'))) {
           try { localStorage.setItem('raffle_app_title', serverTitle); } catch (e) {}
           applyAppTitle(serverTitle);
         }
-        badge.textContent = '🟢 구글시트 연동됨';
+        badge.textContent = '🟢 Firebase 실시간 연동됨';
         badge.className = 'badge live';
         renderStats();
         renderWinners();
@@ -352,7 +362,7 @@
 
       tbody.innerHTML = filtered.map((w, idx) => `
         <tr>
-          <td style="color:var(--text-muted);">${w.rowIndex && w.rowIndex < 100000 ? w.rowIndex - 1 : idx + 1}</td>
+          <td style="color:var(--text-muted);">${typeof w.rowIndex === 'number' && w.rowIndex < 100000 ? w.rowIndex - 1 : idx + 1}</td>
           <td style="color:var(--text-muted);">${escapeHtml(w.wonAt)}</td>
           <td><strong>${escapeHtml(w.prize)}</strong></td>
           <td>${escapeHtml(displayName(w.name))}</td>
@@ -362,7 +372,7 @@
               <button
                 class="btn btn-sm ${w.received ? 'btn-success' : 'btn-ghost'}"
                 style="min-width:66px;"
-                onclick="handleToggleReceived(${w.rowIndex}, ${!w.received})"
+                onclick="handleToggleReceived('${escapeHtml(String(w.rowIndex))}', ${!w.received})"
               >
                 ${w.received ? '수령' : '미수령'}
               </button>
@@ -385,7 +395,7 @@
     }
 
     async function handleToggleReceived(rowIndex, received) {
-      const target = winners.find(w => w.rowIndex === rowIndex);
+      const target = winners.find(w => String(w.rowIndex) === String(rowIndex));
       const prev = target ? target.received : !received;
       if (target) {
         target.received = received;
@@ -393,15 +403,13 @@
         renderStats();
       }
       try {
-        const res = await callGas('toggleWinnerReceived', { rowIndex, received });
-        if (!res.ok) {
-          if (target) {
-            target.received = prev;
-            renderWinners();
-            renderStats();
-          }
-          return showToast('❌ ' + res.error);
-        }
+        const fbUrl = getFbUrl();
+        const res = await fetch(`${fbUrl}/raffle/winners/${encodeURIComponent(rowIndex)}.json`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ received: !!received })
+        });
+        if (!res.ok) throw new Error(`Firebase 오류 (${res.status})`);
       } catch (err) {
         if (target) {
           target.received = prev;
@@ -462,7 +470,21 @@
       }[s]));
     }
 
-    refreshData();
+    function startRealtimeSync() {
+      const fbUrl = getFbUrl();
+      if (!fbUrl || typeof EventSource === 'undefined') return;
+      try {
+        realtimeSource = new EventSource(`${fbUrl}/raffle/winners.json`);
+        const scheduleRefresh = () => {
+          clearTimeout(realtimeTimer);
+          realtimeTimer = setTimeout(refreshData, 250);
+        };
+        realtimeSource.addEventListener('put', scheduleRefresh);
+        realtimeSource.addEventListener('patch', scheduleRefresh);
+      } catch (e) {}
+    }
+
+    refreshData().then(startRealtimeSync);
   </script>
 </body>
 </html>

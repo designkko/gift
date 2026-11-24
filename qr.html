@@ -235,15 +235,14 @@
 
   <div class="toolbar" style="margin-top:20px; margin-bottom:0;">
     <div class="toolbar-actions" style="justify-content:center;">
-      <a class="btn btn-ghost" href="register.html">📝 등록 페이지 열기</a>
+      <a id="open-register-link" class="btn btn-ghost" href="register.html">📝 등록 페이지 열기</a>
       <button id="pdf-btn" class="btn btn-primary" onclick="downloadPdf()">⬇️ PDF 다운로드</button>
     </div>
   </div>
 
   <script>
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwnXfub-C23C2xIhDBSubnmgGhMLy5C0LwrXRYlenMl5OvOPSa6UDjiR8cvxEwtLlJy/exec';
-    const STORAGE_KEY_URL = 'raffle_gas_webapp_url';
-    const DEFAULT_REGISTER_URL = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
+    const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
+    const BASE_REGISTER_URL = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
 
     function safeStorageGet(key) {
       try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
@@ -251,17 +250,30 @@
     function safeStorageSet(key, val) {
       try { localStorage.setItem(key, val); } catch (e) {}
     }
-    function getGasUrl() {
+    function normalizeFbUrl(url) {
+      return String(url || '').trim().replace(/\.json(\?.*)?$/i, '').replace(/\/+$/, '');
+    }
+    function getFbUrl() {
       try {
         const params = new URLSearchParams(window.location.search);
-        const apiParam = (params.get('api') || '').trim();
-        if (apiParam) {
-          safeStorageSet(STORAGE_KEY_URL, apiParam);
-          return apiParam;
+        const fbParam = (params.get('fb') || params.get('api') || '').trim();
+        if (fbParam && /firebase(io\.com|database\.app)/i.test(fbParam)) {
+          const norm = normalizeFbUrl(fbParam);
+          safeStorageSet(STORAGE_KEY_FB_URL, norm);
+          return norm;
         }
       } catch (e) {}
-      return safeStorageGet(STORAGE_KEY_URL) || DEFAULT_GAS_URL;
+      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL));
     }
+    const ACTIVE_FB_URL = getFbUrl();
+    const DEFAULT_REGISTER_URL = ACTIVE_FB_URL
+      ? `${BASE_REGISTER_URL}?fb=${encodeURIComponent(ACTIVE_FB_URL)}`
+      : BASE_REGISTER_URL;
+    (function syncRegisterLink() {
+      const link = document.getElementById('open-register-link');
+      if (link) link.href = DEFAULT_REGISTER_URL;
+    })();
+
     function applyAppTitle(title) {
       const clean = String(title || '').trim();
       if (!clean) return;
@@ -277,11 +289,11 @@
     (function loadAppTitle() {
       const localTitle = safeStorageGet('raffle_app_title');
       if (localTitle) applyAppTitle(localTitle);
-      if (safeStorageGet('raffle_demo_force') === 'true' && localTitle) return;
-      fetch(`${getGasUrl()}?action=getData`)
+      if (!ACTIVE_FB_URL) return;
+      fetch(`${ACTIVE_FB_URL}/raffle/settings.json`)
         .then(r => r.json())
-        .then(res => {
-          const title = (res && (res.appTitle || (res.data && res.data.appTitle))) || '';
+        .then(settings => {
+          const title = (settings && settings.appTitle) || '';
           if (title) {
             safeStorageSet('raffle_app_title', title);
             applyAppTitle(title);
