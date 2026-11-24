@@ -657,7 +657,7 @@
           <button class="btn btn-ghost btn-sm" title="당첨 확인(수령처용) 링크 복사" onclick="copyPageLink('winners.html', '당첨 확인(수령처용)')">🔗</button>
         </span>
         <button class="btn btn-ghost btn-sm" onclick="openSettingsHubModal()">⚙️ 설정</button>
-        <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
+        <button class="btn btn-ghost btn-sm" onclick="refreshData(true)">🔄 새로고침</button>
         <span id="conn-badge" class="badge demo">로컬 데모 모드</span>
       </div>
     </header>
@@ -1261,6 +1261,7 @@
 
     async function fbRequest(fbUrl, path, method = 'GET', bodyObj = undefined) {
       const opts = { method, headers: {} };
+      if (method === 'GET') opts.cache = 'no-store';
       if (bodyObj !== undefined) {
         opts.headers['Content-Type'] = 'application/json';
         opts.body = JSON.stringify(bodyObj);
@@ -1778,12 +1779,13 @@
       return { ok: false, error: '알 수 없는 요청' };
     }
 
-    async function refreshData() {
+    async function refreshData(manual = false) {
       try {
         updateConnectionBadge();
         const res = await callBackend('getData');
         if (!res.ok) throw new Error(res.error);
         applyState(res);
+        if (manual) showToast('🔄 최신 데이터를 불러왔습니다.');
         return true;
       } catch (err) {
         updateConnectionBadge(true);

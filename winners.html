@@ -196,7 +196,7 @@
       </div>
       <div class="status-bar">
         <span id="conn-badge" class="badge live">🟢 Firebase 연결 중...</span>
-        <button class="btn btn-ghost btn-sm" onclick="refreshData()">🔄 새로고침</button>
+        <button class="btn btn-ghost btn-sm" onclick="refreshData(true)">🔄 새로고침</button>
       </div>
     </header>
 
@@ -291,7 +291,7 @@
     }
     if (safeGet('raffle_app_title')) applyAppTitle(safeGet('raffle_app_title'));
 
-    async function refreshData() {
+    async function refreshData(manual = false) {
       const badge = document.getElementById('conn-badge');
       const fbUrl = getFbUrl();
       if (!fbUrl) {
@@ -301,7 +301,7 @@
         return;
       }
       try {
-        const res = await fetch(`${fbUrl}/raffle.json`);
+        const res = await fetch(`${fbUrl}/raffle.json`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`Firebase 오류 (${res.status})`);
         const root = (await res.json()) || {};
         const winnersObj = root.winners || {};
@@ -325,6 +325,7 @@
         badge.className = 'badge live';
         renderStats();
         renderWinners();
+        if (manual) showToast('🔄 최신 당첨 기록을 불러왔습니다.');
       } catch (err) {
         badge.textContent = '🔴 연결 오류';
         badge.className = 'badge err';
