@@ -1035,6 +1035,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
+    const DEFAULT_FB_URL = 'https://naeil-xmas-default-rtdb.asia-southeast1.firebasedatabase.app';
     const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
     const STORAGE_KEY_DEMO_FORCE = 'raffle_force_demo';
     const STORAGE_KEY_DEMO = 'raffle_demo_state_v2';
@@ -1260,7 +1261,7 @@
     function getFbUrl() {
       if (runtimeFbUrl) return normalizeFbUrl(runtimeFbUrl);
       if (safeStorageGet(STORAGE_KEY_DEMO_FORCE) === 'true') return '';
-      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL));
+      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL) || DEFAULT_FB_URL);
     }
 
     function updateConnectionBadge(hasError = false) {

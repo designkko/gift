@@ -241,6 +241,7 @@
   </div>
 
   <script>
+    const DEFAULT_FB_URL = 'https://naeil-xmas-default-rtdb.asia-southeast1.firebasedatabase.app';
     const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
     const BASE_REGISTER_URL = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}register.html`;
 
@@ -263,7 +264,7 @@
           return norm;
         }
       } catch (e) {}
-      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL));
+      return normalizeFbUrl(safeStorageGet(STORAGE_KEY_FB_URL) || DEFAULT_FB_URL);
     }
     const ACTIVE_FB_URL = getFbUrl();
     const DEFAULT_REGISTER_URL = ACTIVE_FB_URL

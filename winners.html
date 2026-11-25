@@ -248,6 +248,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
+    const DEFAULT_FB_URL = 'https://naeil-xmas-default-rtdb.asia-southeast1.firebasedatabase.app';
     const STORAGE_KEY_FB_URL = 'raffle_firebase_url';
     let runtimeFbUrl = '';
     let winners = [];
@@ -277,7 +278,7 @@
     })();
 
     function getFbUrl() {
-      return runtimeFbUrl || normalizeFbUrl(safeGet(STORAGE_KEY_FB_URL));
+      return runtimeFbUrl || normalizeFbUrl(safeGet(STORAGE_KEY_FB_URL) || DEFAULT_FB_URL);
     }
 
     let currentAppTitle = safeGet('raffle_app_title') || '🎄 2026 내일교회 성탄 선물 추첨';
