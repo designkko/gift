@@ -491,6 +491,36 @@
       margin-bottom: 14px;
     }
 
+    .settings-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .settings-tab-btn {
+      padding: 7px 13px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .settings-tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; }
+
     @media (max-width: 720px) {
       .settings-grid { grid-template-columns: 1fr; }
     }
@@ -657,7 +687,6 @@
           <button class="btn btn-ghost btn-sm" title="당첨 확인(수령처용) 링크 복사" onclick="copyPageLink('winners.html', '당첨 확인(수령처용)')">🔗</button>
         </span>
         <button class="btn btn-ghost btn-sm" onclick="openSettingsHubModal()">⚙️ 설정</button>
-        <button class="btn btn-ghost btn-sm" onclick="openDbSmsModal()">🔌 DB/문자설정</button>
         <button class="btn btn-ghost btn-sm" onclick="refreshData(true)">🔄 새로고침</button>
         <span id="conn-badge" class="badge demo">로컬 데모 모드</span>
       </div>
@@ -867,167 +896,169 @@
   <!-- 통합 설정 모달 -->
   <div id="settings-modal" class="modal-backdrop" style="align-items:flex-start; padding-top:20px;">
     <div class="modal" style="max-width:860px; max-height:94vh; overflow-y:auto;">
-      <h3>⚙️ 프로그램 설정</h3>
-      <p>타이틀, 효과음 및 참여자 시작·마감 설정을 관리합니다.</p>
+      <h3>⚙️ 설정</h3>
+      <p>프로그램, 시간, DB 및 문자 설정을 탭별로 관리합니다.</p>
 
-      <div class="settings-grid">
-        <!-- 프로그램 타이틀 & 설명 -->
-        <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px;">
-          <form onsubmit="saveAppTitleSetting(event)" style="display:flex; flex-direction:column; gap:10px; height:100%;">
-            <div class="field">
-              <label for="setting-app-title">프로그램 타이틀</label>
-              <input id="setting-app-title" type="text" placeholder="🎄 2026 내일교회 성탄 선물 추첨" required />
-            </div>
-            <div class="field">
-              <label for="setting-app-subtitle">프로그램 설명</label>
-              <input id="setting-app-subtitle" type="text" placeholder="당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다." />
-            </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:auto;">
-              <button type="submit" class="btn btn-primary btn-sm">💾 저장</button>
-            </div>
-          </form>
-        </div>
+      <div class="settings-tabs">
+        <button type="button" class="settings-tab-btn active" data-stab="program" onclick="switchSettingsTab('program')">⚙️ 프로그램 설정</button>
+        <button type="button" class="settings-tab-btn" data-stab="time" onclick="switchSettingsTab('time')">⏰ 시간설정</button>
+        <button type="button" class="settings-tab-btn" data-stab="db" onclick="switchSettingsTab('db')">🗄️ DB설정</button>
+        <button type="button" class="settings-tab-btn" data-stab="sms" onclick="switchSettingsTab('sms')">📩 문자설정</button>
+      </div>
 
-        <!-- 효과음 -->
-        <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; justify-content:center;">
-          <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">효과음</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div>
-              <label for="countdown-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">추첨 카운트다운</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <select id="countdown-sound-select" onchange="changeCountdownSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
-                  <option value="beep">기본 틱</option>
-                  <option value="drum">북소리 (드럼)</option>
-                  <option value="chime">맑은 종소리</option>
-                  <option value="random">🎲 랜덤</option>
-                  <option value="off">🔇 꺼짐</option>
-                </select>
-                <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="previewCountdownSound()">▶</button>
+      <!-- 1. 프로그램 설정 탭 -->
+      <div id="stab-program" class="settings-panel active">
+        <div class="settings-grid">
+          <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px;">
+            <form onsubmit="saveAppTitleSetting(event)" style="display:flex; flex-direction:column; gap:10px; height:100%;">
+              <div class="field">
+                <label for="setting-app-title">프로그램 타이틀</label>
+                <input id="setting-app-title" type="text" placeholder="🎄 2026 내일교회 성탄 선물 추첨" required />
               </div>
-            </div>
-            <div>
-              <label for="fanfare-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">당첨 빵빠레</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <select id="fanfare-sound-select" onchange="changeFanfareSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
-                  <option value="brass">웅장한 브라스</option>
-                  <option value="chime">반짝이는 차임</option>
-                  <option value="festival">경쾌한 축제</option>
-                  <option value="random">🎲 랜덤</option>
-                  <option value="off">🔇 꺼짐</option>
-                </select>
-                <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="playFanfare()">▶</button>
+              <div class="field">
+                <label for="setting-app-subtitle">프로그램 설명</label>
+                <input id="setting-app-subtitle" type="text" placeholder="당첨된 참여자는 다음 추첨 대상에서 자동으로 제외됩니다." />
+              </div>
+              <div style="display:flex; justify-content:flex-end; margin-top:auto;">
+                <button type="submit" class="btn btn-primary btn-sm">💾 저장</button>
+              </div>
+            </form>
+          </div>
+
+          <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">효과음</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div>
+                <label for="countdown-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">추첨 카운트다운</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="countdown-sound-select" onchange="changeCountdownSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
+                    <option value="beep">기본 틱</option>
+                    <option value="drum">북소리 (드럼)</option>
+                    <option value="chime">맑은 종소리</option>
+                    <option value="random">🎲 랜덤</option>
+                    <option value="off">🔇 꺼짐</option>
+                  </select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="previewCountdownSound()">▶</button>
+                </div>
+              </div>
+              <div>
+                <label for="fanfare-sound-select" style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">당첨 빵빠레</label>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="fanfare-sound-select" onchange="changeFanfareSound(this.value)" style="padding:7px 8px; font-size:0.84rem;">
+                    <option value="brass">웅장한 브라스</option>
+                    <option value="chime">반짝이는 차임</option>
+                    <option value="festival">경쾌한 축제</option>
+                    <option value="random">🎲 랜덤</option>
+                    <option value="off">🔇 꺼짐</option>
+                  </select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="미리듣기" onclick="playFanfare()">▶</button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 참여자 시작 · 마감 설정 -->
-      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
-        <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">참여자 시작 · 마감 설정</div>
-        <div style="display:grid; grid-template-columns:minmax(180px, 0.75fr) 1.5fr; gap:12px; align-items:start; margin-bottom:10px;">
-          <div class="field" style="margin:0;">
-            <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
-            <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
+      <!-- 2. 시간설정 탭 -->
+      <div id="stab-time" class="settings-panel">
+        <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
+          <div style="font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:10px;">참여자 시작 · 마감 설정</div>
+          <div style="display:grid; grid-template-columns:minmax(180px, 0.75fr) 1.5fr; gap:12px; align-items:start; margin-bottom:10px;">
+            <div class="field" style="margin:0;">
+              <label for="setting-reg-max-count">인원 마감 (명, 0이면 제한 없음)</label>
+              <input id="setting-reg-max-count" type="number" min="0" placeholder="예: 100" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div class="field" style="margin:0;">
+                <label for="setting-reg-start-date">시작 날짜 / 시간 (비우면 즉시 시작)</label>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <input id="setting-reg-start-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
+                  <select id="setting-reg-start-hour" style="width:74px; padding:9px 6px;"></select>
+                  <select id="setting-reg-start-minute" style="width:74px; padding:9px 6px;"></select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="시작 날짜 초기화" onclick="clearRegStartInput()">✕</button>
+                </div>
+              </div>
+              <div class="field" style="margin:0;">
+                <label for="setting-reg-deadline-date">마감 날짜 / 시간 (비우면 제한 없음)</label>
+                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                  <input id="setting-reg-deadline-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
+                  <select id="setting-reg-deadline-hour" style="width:74px; padding:9px 6px;"></select>
+                  <select id="setting-reg-deadline-minute" style="width:74px; padding:9px 6px;"></select>
+                  <button type="button" class="btn btn-ghost btn-sm" title="마감 날짜 초기화" onclick="clearRegDeadlineInput()">✕</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div style="display:flex; flex-direction:column; gap:10px;">
-            <div class="field" style="margin:0;">
-              <label for="setting-reg-start-date">시작 날짜 / 시간 (비우면 즉시 시작)</label>
-              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                <input id="setting-reg-start-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
-                <select id="setting-reg-start-hour" style="width:74px; padding:9px 6px;"></select>
-                <select id="setting-reg-start-minute" style="width:74px; padding:9px 6px;"></select>
-                <button type="button" class="btn btn-ghost btn-sm" title="시작 날짜 초기화" onclick="clearRegStartInput()">✕</button>
-              </div>
-            </div>
-            <div class="field" style="margin:0;">
-              <label for="setting-reg-deadline-date">마감 날짜 / 시간 (비우면 제한 없음)</label>
-              <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                <input id="setting-reg-deadline-date" type="date" style="color-scheme:dark; flex:1; min-width:130px;" />
-                <select id="setting-reg-deadline-hour" style="width:74px; padding:9px 6px;"></select>
-                <select id="setting-reg-deadline-minute" style="width:74px; padding:9px 6px;"></select>
-                <button type="button" class="btn btn-ghost btn-sm" title="마감 날짜 초기화" onclick="clearRegDeadlineInput()">✕</button>
-              </div>
-            </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 시작·마감 설정 저장</button>
           </div>
         </div>
-        <div style="display:flex; justify-content:flex-end;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveRegLimitSetting()">💾 시작·마감 설정 저장</button>
+      </div>
+
+      <!-- 3. DB설정 탭 -->
+      <div id="stab-db" class="settings-panel">
+        <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
+          <div class="field" style="margin-bottom:10px;">
+            <label for="fb-url-input">Firebase Realtime Database URL</label>
+            <input id="fb-url-input" type="url" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" />
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="saveDefaultFbUrl()">📌 디폴트 저장</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="switchToLocalDemo()">🟡 로컬 데모</button>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveFbUrl()">💾 연결 저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 문자설정 탭 -->
+      <div id="stab-sms" class="settings-panel">
+        <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
+          <div class="field" style="margin-bottom:10px;">
+            <label for="sms-provider">문자 자동발송 API (솔라피 / 문자천국 / 알리고)</label>
+            <select id="sms-provider" onchange="toggleSmsFields()">
+              <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
+              <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
+              <option value="munjachunguk">문자천국 (skysms)</option>
+              <option value="aligo">알리고 (Aligo)</option>
+            </select>
+            <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;"></div>
+          </div>
+          <div id="sms-fields" style="display:none;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
+              <div id="sms-sender-wrap" class="field">
+                <label for="sms-sender">발신번호 (숫자만)</label>
+                <input id="sms-sender" type="tel" placeholder="01012345678" />
+              </div>
+              <div class="field">
+                <label id="sms-apikey-label" for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
+                <input id="sms-api-key" type="password" placeholder="변경 시에만 입력" />
+              </div>
+              <div id="sms-secret-wrap" class="field">
+                <label for="sms-api-secret">API Secret (솔라피) <span id="sms-secret-status" style="color:#34d399;"></span></label>
+                <input id="sms-api-secret" type="password" placeholder="변경 시에만 입력" />
+              </div>
+              <div id="sms-userid-wrap" class="field" style="display:none;">
+                <label id="sms-userid-label" for="sms-user-id">User ID</label>
+                <input id="sms-user-id" type="text" placeholder="아이디" />
+              </div>
+            </div>
+            <label class="toggle-label" style="margin:4px 0 10px;">
+              <input type="checkbox" id="sms-auto-send" />
+              추첨 완료 즉시 당첨자에게 자동 문자 발송
+            </label>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="testSmsConfigForm()">🧪 테스트 발송</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveSmsConfigForm()">💾 문자 API 저장</button>
+          </div>
         </div>
       </div>
 
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <a href="https://github.com/designkko/gift/blob/main/README.md" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="text-decoration:none;">📖 사용설명서 보기</a>
         <button type="button" class="btn btn-ghost" onclick="closeModal('settings-modal')">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- DB / 문자 설정 모달 -->
-  <div id="db-sms-modal" class="modal-backdrop" style="align-items:flex-start; padding-top:20px;">
-    <div class="modal" style="max-width:720px; max-height:94vh; overflow-y:auto;">
-      <h3>🔌 DB / 문자 설정</h3>
-      <p>Firebase 실시간 데이터베이스 연결 및 당첨자 문자 자동발송 API를 설정합니다.</p>
-
-      <!-- Firebase 연결 설정 -->
-      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
-        <div class="field" style="margin-bottom:10px;">
-          <label for="fb-url-input">Firebase Realtime Database URL</label>
-          <input id="fb-url-input" type="url" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" />
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button type="button" class="btn btn-ghost btn-sm" onclick="saveDefaultFbUrl()">📌 디폴트 저장</button>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="switchToLocalDemo()">🟡 로컬 데모</button>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveFbUrl()">💾 연결 저장</button>
-        </div>
-      </div>
-
-      <!-- 문자 API 설정 -->
-      <div style="padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:14px;">
-        <div class="field" style="margin-bottom:10px;">
-          <label for="sms-provider">문자 자동발송 API (솔라피 / 문자천국 / 알리고)</label>
-          <select id="sms-provider" onchange="toggleSmsFields()">
-            <option value="none">사용 안 함 (핸드폰 기본 문자 버튼만 사용)</option>
-            <option value="solapi">솔라피 (Solapi / 쿨SMS)</option>
-            <option value="munjachunguk">문자천국 (skysms)</option>
-            <option value="aligo">알리고 (Aligo)</option>
-          </select>
-          <div id="sms-provider-note" style="display:none; margin-top:6px; font-size:0.78rem; color:#93c5fd;"></div>
-        </div>
-        <div id="sms-fields" style="display:none;">
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:10px;">
-            <div id="sms-sender-wrap" class="field">
-              <label for="sms-sender">발신번호 (숫자만)</label>
-              <input id="sms-sender" type="tel" placeholder="01012345678" />
-            </div>
-            <div class="field">
-              <label id="sms-apikey-label" for="sms-api-key">API Key <span id="sms-key-status" style="color:#34d399;"></span></label>
-              <input id="sms-api-key" type="password" placeholder="변경 시에만 입력" />
-            </div>
-            <div id="sms-secret-wrap" class="field">
-              <label for="sms-api-secret">API Secret (솔라피) <span id="sms-secret-status" style="color:#34d399;"></span></label>
-              <input id="sms-api-secret" type="password" placeholder="변경 시에만 입력" />
-            </div>
-            <div id="sms-userid-wrap" class="field" style="display:none;">
-              <label id="sms-userid-label" for="sms-user-id">User ID</label>
-              <input id="sms-user-id" type="text" placeholder="아이디" />
-            </div>
-          </div>
-          <label class="toggle-label" style="margin:4px 0 10px;">
-            <input type="checkbox" id="sms-auto-send" />
-            추첨 완료 즉시 당첨자에게 자동 문자 발송
-          </label>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:8px;">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="testSmsConfigForm()">🧪 테스트 발송</button>
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveSmsConfigForm()">💾 문자 API 저장</button>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:flex-end;">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('db-sms-modal')">닫기</button>
       </div>
     </div>
   </div>
@@ -2811,7 +2842,16 @@
     }
 
     function openBulkModal() { document.getElementById('bulk-modal').classList.add('open'); }
-    async function openSettingsHubModal() {
+    function switchSettingsTab(tabName) {
+      document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.stab === tabName);
+      });
+      document.querySelectorAll('.settings-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === 'stab-' + tabName);
+      });
+    }
+
+    async function openSettingsHubModal(initialTab = 'program') {
       updateSoundButtons();
       const titleInput = document.getElementById('setting-app-title');
       const h1 = document.getElementById('app-main-title');
@@ -2819,10 +2859,6 @@
       const subInput = document.getElementById('setting-app-subtitle');
       const subEl = document.getElementById('app-main-subtitle');
       if (subInput && subEl) subInput.value = state.appSubtitle || subEl.textContent.trim();
-      document.getElementById('settings-modal').classList.add('open');
-    }
-
-    function openDbSmsModal() {
       document.getElementById('fb-url-input').value = getFbUrl();
       const smsCfg = loadSmsConfig();
       document.getElementById('sms-provider').value = smsCfg.provider || 'none';
@@ -2834,7 +2870,8 @@
       document.getElementById('sms-api-key').value = '';
       document.getElementById('sms-api-secret').value = '';
       toggleSmsFields();
-      document.getElementById('db-sms-modal').classList.add('open');
+      switchSettingsTab(initialTab);
+      document.getElementById('settings-modal').classList.add('open');
     }
     async function copyPageLink(fileName, label) {
       const fbUrl = getFbUrl().trim();
