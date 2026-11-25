@@ -976,7 +976,7 @@
           <input id="fb-url-input" type="url" placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" />
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="copyShareLink()">📱 핸드폰 연결 링크 복사</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="saveDefaultFbUrl()">📌 디폴트 저장</button>
           <div style="display:flex; gap:6px; align-items:center;">
             <button type="button" class="btn btn-ghost btn-sm" onclick="switchToLocalDemo()">🟡 로컬 데모</button>
             <button type="button" class="btn btn-primary btn-sm" onclick="saveFbUrl()">💾 연결 저장</button>
@@ -2860,15 +2860,15 @@
       }
     }
 
-    async function copyShareLink() {
-      const url = normalizeFbUrl(document.getElementById('fb-url-input').value || getFbUrl());
-      if (!url) return showToast('먼저 Firebase Realtime Database URL을 입력해주세요.');
-      const shareUrl = `${window.location.origin}${window.location.pathname}?fb=${encodeURIComponent(url)}`;
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('📱 핸드폰 연결 링크가 복사되었습니다! 카톡 등으로 열어보세요.');
-      } catch (e) {
-        prompt('아래 링크를 복사해 핸드폰에서 여세요:', shareUrl);
+    async function saveDefaultFbUrl() {
+      runtimeFbUrl = DEFAULT_FB_URL;
+      document.getElementById('fb-url-input').value = DEFAULT_FB_URL;
+      try { localStorage.removeItem(STORAGE_KEY_DEMO_FORCE); } catch (e) {}
+      safeStorageSet(STORAGE_KEY_FB_URL, DEFAULT_FB_URL);
+      const ok = await refreshData();
+      if (ok) {
+        startRealtimeSync();
+        showToast(`📌 기본(디폴트) Firebase DB로 저장·연결되었습니다! (참여자 ${state.participants.length}명, 상품 ${state.prizes.length}개)`);
       }
     }
 

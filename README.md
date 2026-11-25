@@ -58,7 +58,7 @@ Firebase Realtime Database와 실시간으로 연동되는 웹 기반 성탄 선
 ### 🔌 DB/문자설정
 - **Firebase Realtime Database URL**:
   - Firebase 콘솔에서 만든 Realtime Database URL을 입력하고 **`💾 연결 저장`**을 누르면 실시간 DB와 연동됩니다.
-  - **`📱 핸드폰 연결 링크 복사`**로 현재 Firebase 연결 정보가 담긴 관리자 링크를 복사할 수 있습니다.
+  - **`📌 디폴트 저장`** 버튼을 누르면 기본 설정된 Firebase DB 주소로 바로 복원·저장됩니다.
   - **`🟡 로컬 데모`** 버튼을 누르면 Firebase 연동 없이 브라우저 내 데모 데이터(10명)로 테스트할 수 있습니다.
 - **문자 자동발송 API**:
   - **솔라피(Solapi / 쿨SMS)**, **문자천국(skysms)**, **알리고(Aligo)** 중 선택하여 설정할 수 있습니다.
